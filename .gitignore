@@ -1,0 +1,38 @@
+/devpost/learner-profile.md
+.env
+.env.*
+!.env.example
+*.env.local
+/designs
+
+# Dependencies
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+.next/
+*/.next/
+out/
+*/out/
+dist/
+*/dist/
+build/
+*/build/
+
+# Typescript
+*.tsbuildinfo
+*/tsconfig.tsbuildinfo
+
+# Logs & misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.pem
+
+# Agents
+AGENTS.md
+CLAUDE.md
+
