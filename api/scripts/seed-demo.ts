@@ -4,6 +4,7 @@
 // Fetched news is saved to scripts/.seed-cache first and ingested from there, so a re-run never spends news quota again.
 // --refetch downloads fresh news; --build-only skips fetching and ingesting and only rebuilds the briefings.
 import '../src/config/env';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { runPatiently } from '../src/lib/gemini';
@@ -37,7 +38,7 @@ interface Persona {
   };
   secondAmbition: { ambition: string; direction: string; timeline: string; categories: string[] };
   assumptions: string[];
-  // Extra searches for personas whose ambition topics are thin in the general news; fetched once and cached per persona.
+  // Extra searches for personas whose ambition topics are thin in the general news; fetched once and cached per persona; the cache name changes with the query list. Keep them short: GNews returns nothing for phrases.
   extraQueries?: string[];
 }
 
@@ -70,15 +71,15 @@ const PERSONAS: Persona[] = [
       'Funded MS slots in robotics do not shrink next admission cycle',
     ],
     extraQueries: [
-      'US student visa appointments India',
-      'F-1 visa international students policy',
-      'GRE test optional universities',
-      'Indian students masters USA funding',
-      'DAAD scholarship Indian students',
-      'Germany masters robotics Indian students',
-      'Netherlands scholarship masters Indian students',
-      'robotics masters scholarship',
-      'graduate research funding cuts international students',
+      'student visa',
+      'H1B',
+      'F1 visa',
+      'OPT visa',
+      'international students',
+      'study abroad',
+      'Indian students abroad',
+      'GRE exam',
+      'masters scholarship',
     ],
   },
   {
@@ -255,7 +256,7 @@ async function loadNews(sessions: { persona: Persona; userId: string }[], refetc
   const all = await fetchOnce(CACHE_FILE, [...concepts], refetch);
   for (const { persona } of sessions) {
     if (!persona.extraQueries) continue;
-    all.push(...(await fetchOnce(path.join(path.dirname(CACHE_FILE), `news-${persona.key}.json`), persona.extraQueries, refetch)));
+    all.push(...(await fetchOnce(path.join(path.dirname(CACHE_FILE), `news-${persona.key}-${crypto.createHash('md5').update(persona.extraQueries.join('|')).digest('hex').slice(0, 8)}.json`), persona.extraQueries, refetch)));
   }
   return all;
 }
