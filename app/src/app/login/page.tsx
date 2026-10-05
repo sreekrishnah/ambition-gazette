@@ -5,10 +5,14 @@ import Image from "next/image";
 import { Mail, Lock, EyeOff, Eye, ArrowRight } from "lucide-react";
 import { loginUser } from "@/app/actions";
 import { useActionState, useState } from "react";
+import { DEMO_ACCOUNTS, DEMO_MODE } from "@/lib/demo-accounts";
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginUser, { error: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [demoKey, setDemoKey] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen w-full relative flex items-center justify-center p-4 bg-[#F9F7F4]">
@@ -41,6 +45,28 @@ export default function LoginPage() {
           Sign in to continue your journey with<br/>Ambition Gazette.
         </p>
 
+        {DEMO_MODE && (
+          <div className="mb-4 rounded-full bg-[#EFE8DE] p-1 flex items-center justify-between" role="group" aria-label="Demo accounts">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.key}
+                type="button"
+                aria-pressed={demoKey === account.key}
+                onClick={() => {
+                  setDemoKey(account.key);
+                  setEmail(account.email);
+                  setPassword(account.password);
+                }}
+                className={`flex-1 rounded-full py-2 text-[12.5px] font-medium transition-all ${
+                  demoKey === account.key ? "bg-[#701A23] text-white shadow-sm" : "text-[#4A4641] hover:bg-[#E4D9CC]/60"
+                }`}
+              >
+                {account.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {state.error && (
           <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 text-[13px]">
             {state.error}
@@ -55,6 +81,8 @@ export default function LoginPage() {
             <input
               type="email"
               name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="Email address"
               className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-[#FAF8F5]/80 border border-[#E4D9CC] rounded-xl text-[#1A1918] placeholder:text-[#8A847C] focus:outline-none focus:border-[#701A23] focus:ring-1 focus:ring-[#701A23] transition-all"
@@ -68,6 +96,8 @@ export default function LoginPage() {
             <input
               type={showPassword ? "text" : "password"}
               name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="Password"
               className="w-full pl-10 pr-10 py-2.5 text-[13px] bg-[#FAF8F5]/80 border border-[#E4D9CC] rounded-xl text-[#1A1918] placeholder:text-[#8A847C] focus:outline-none focus:border-[#701A23] focus:ring-1 focus:ring-[#701A23] transition-all"
