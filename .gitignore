@@ -36,3 +36,6 @@ yarn-error.log*
 AGENTS.md
 CLAUDE.md
 
+
+# Local demo seed cache
+api/scripts/.seed-cache/
