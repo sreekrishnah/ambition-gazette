@@ -6,7 +6,6 @@ import { useClientValue } from "@/hooks/useClientValue";
 
 interface HeroBannerProps {
   fullName: string | null;
-  onOpenAgentModal: () => void;
 }
 
 function greetingFor(hour: number): string {
@@ -15,7 +14,7 @@ function greetingFor(hour: number): string {
   return "GOOD EVENING";
 }
 
-export function HeroBanner({ fullName, onOpenAgentModal }: HeroBannerProps) {
+export function HeroBanner({ fullName }: HeroBannerProps) {
   // Client-only so server and client markup match.
   const hour = useClientValue(() => new Date().getHours());
   const greeting = hour === null ? "WELCOME" : greetingFor(hour);
@@ -51,26 +50,7 @@ export function HeroBanner({ fullName, onOpenAgentModal }: HeroBannerProps) {
             Your <span className="text-[#DE6A52]">next step.</span>
           </h2>
 
-          {/* Supporting Statement */}
-          <p className="text-white/80 text-[11.5px] sm:text-xs md:text-[13px] mt-1.5 sm:mt-2 max-w-sm font-normal">
-            Real-world developments, connected to what you care about.
-          </p>
 
-          {/* Talk to AI Agent CTA Button */}
-          <button
-            onClick={onOpenAgentModal}
-            className="mt-3.5 sm:mt-4.5 inline-flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full bg-black/45 hover:bg-black/65 border border-white/25 backdrop-blur-md text-white text-[11px] sm:text-xs font-medium transition cursor-pointer shadow-sm active:scale-[0.98] font-dm-sans"
-          >
-            {/* Audio Waveform icon */}
-            <span className="flex items-center gap-0.5 h-3">
-              <span className="w-[2px] h-2 bg-white rounded-full"></span>
-              <span className="w-[2px] h-3.5 bg-white rounded-full"></span>
-              <span className="w-[2px] h-2.5 bg-white rounded-full"></span>
-              <span className="w-[2px] h-1.5 bg-white rounded-full"></span>
-            </span>
-            <span>Talk to AI Agent</span>
-            <span className="text-xs sm:text-sm font-light">→</span>
-          </button>
         </div>
 
         {/* Editorial Quote (Desktop top-right) */}

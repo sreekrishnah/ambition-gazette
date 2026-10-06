@@ -23,6 +23,14 @@ const PROCESSING_DELAY_MS = 700;
 const LEVEL_LOG_INTERVAL_MS = 5000;
 // Pause after an agent turn before the next part is cued, long enough for the listener to start speaking.
 const NEXT_PART_DELAY_MS = 900;
+// How long the host waits for the listener after a question: long enough to think, short enough not to feel dead.
+const ASK_WAIT_MS = 9000;
+// After the listener has answered, a short wait for anything more before moving on.
+const FOLLOW_UP_WAIT_MS = 4500;
+// The farewell audio is already on its way to the client; a moment lets it finish before the call is closed.
+const FAREWELL_GRACE_MS = 2500;
+// Longest the briefing waits for the host to answer a listener who spoke after a question.
+const UNANSWERED_WAIT_MS = 25_000;
 
 export type LiveState = 'connecting' | 'listening' | 'user_speaking' | 'processing' | 'agent_speaking' | 'held' | 'ended' | 'error';
 export type Role = 'user' | 'agent';
@@ -72,6 +80,8 @@ export class LiveSession {
   private watchdog: NodeJS.Timeout | null = null;
   private driver: BriefingDriver | null = null;
   private continueTimer: NodeJS.Timeout | null = null;
+  // Separate from continueTimer so the listener speaking cannot cancel the end of a finished call.
+  private endTimer: NodeJS.Timeout | null = null;
   private toolsInFlight = 0;
   private tokensUsed = 0;
   private inputFrames = 0;
@@ -264,6 +274,8 @@ export class LiveSession {
     for (const part of content.modelTurn?.parts ?? []) {
       const inline = part.inlineData;
       if (inline?.data && inline.mimeType?.startsWith('audio/')) {
+        // The host speaking is activity too: a listener who mutes the mic to hear a long briefing is not idle.
+        this.lastActivity = Date.now();
         if (this.processingTimer) clearTimeout(this.processingTimer);
         if (this.state !== 'agent_speaking' && !this.held) this.setState('agent_speaking');
         this.out.audio(this.turn, Buffer.from(inline.data, 'base64'));
@@ -274,8 +286,7 @@ export class LiveSession {
       this.finalizeOpen();
       this.turn += 1;
       if (!this.held) this.setState('listening');
-      this.driver?.turnCompleted();
-      this.scheduleNextPart();
+      this.afterTurn();
     }
   }
 
@@ -354,11 +365,38 @@ export class LiveSession {
   private listenerSpoke(): void {
     this.driver?.listenerSpoke();
     this.clearContinueTimer();
+    // If the host never answers (for example the sound was only noise), the briefing must still move on.
+    if (this.driver?.waitingFor) this.waitForListener(UNANSWERED_WAIT_MS);
   }
 
   private clearContinueTimer(): void {
     if (this.continueTimer) clearTimeout(this.continueTimer);
     this.continueTimer = null;
+  }
+
+  // What follows a finished turn depends on the driver: cue the next part, wait for the listener, or end the call.
+  private afterTurn(): void {
+    if (!this.driver) return;
+    const askedJustNow = this.driver.running;
+    const outcome = this.driver.turnCompleted();
+    if (outcome === 'end') {
+      this.clearContinueTimer();
+      this.endTimer = setTimeout(() => void this.end('completed'), FAREWELL_GRACE_MS);
+    } else if (outcome === 'wait') {
+      this.waitForListener(askedJustNow ? ASK_WAIT_MS : FOLLOW_UP_WAIT_MS);
+    } else {
+      this.scheduleNextPart();
+    }
+  }
+
+  private waitForListener(ms: number): void {
+    if (this.closing) return;
+    this.clearContinueTimer();
+    this.continueTimer = setTimeout(() => {
+      this.continueTimer = null;
+      this.driver?.waitElapsed();
+      this.cueNextPart();
+    }, ms);
   }
 
   private scheduleNextPart(): void {
@@ -435,6 +473,8 @@ export class LiveSession {
     this.watchdog = null;
     this.processingTimer = null;
     this.clearContinueTimer();
+    if (this.endTimer) clearTimeout(this.endTimer);
+    this.endTimer = null;
     try {
       this.session?.close();
     } catch (err) {

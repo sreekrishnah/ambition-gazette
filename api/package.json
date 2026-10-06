@@ -13,7 +13,8 @@
     "migrate": "tsx scripts/migrate.ts",
     "reembed": "tsx scripts/reembed.ts",
     "e2e": "tsx scripts/e2e.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "demo:flip": "tsx scripts/demo-flip.ts"
   },
   "dependencies": {
     "@google/genai": "^2.24.0",

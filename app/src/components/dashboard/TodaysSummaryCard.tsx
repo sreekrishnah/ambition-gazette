@@ -19,6 +19,7 @@ interface TodaysSummaryCardProps {
   onToggleTrack: (item: AISummaryItem) => void;
   relevantIds: Set<string>;
   onFeedback: (item: AISummaryItem, feedbackType: ItemFeedbackType) => void;
+  answeredAssumptionIds: Set<string>;
 }
 
 export function TodaysSummaryCard({
@@ -32,6 +33,7 @@ export function TodaysSummaryCard({
   onToggleTrack,
   relevantIds,
   onFeedback,
+  answeredAssumptionIds,
 }: TodaysSummaryCardProps) {
   const { openId, toggle } = useSingleOpen();
 
@@ -46,40 +48,18 @@ export function TodaysSummaryCard({
     });
   }, [searchQuery, items]);
 
-  const needAttention = items.filter((i) => i.attention === "act").length;
+  const needAttention = items.filter((i) => i.attention === "act" && !(i.assumption && answeredAssumptionIds.has(i.assumption.id))).length;
   const worthKnowing = items.filter((i) => i.attention === "know").length;
   const attentionLine =
     items.length === 0
-      ? "Key developments that matter to your ambitions, with sources and what they mean."
+      ? ""
       : needAttention > 0
-        ? `${needAttention} need${needAttention === 1 ? "s" : ""} your attention, ${worthKnowing} worth knowing.`
-        : `Nothing requires your attention today. ${worthKnowing} worth knowing, ${items.length - worthKnowing} for background.`;
+        ? `${needAttention} need${needAttention === 1 ? "s" : ""} attention · ${worthKnowing} worth knowing`
+        : `Nothing needs attention · ${worthKnowing} worth knowing`;
 
   return (
     <section className="bg-white border border-[#ECE7DF] rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex flex-col">
-      {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-[#FAF8F5] via-[#FCF4F1] to-[#FDEEEA] border border-[#F3ECE5] rounded-xl px-4 py-3 sm:px-4.5 sm:py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-start gap-2.5">
-          {/* Vertical burgundy indicator bar */}
-          <div className="w-1 h-5 bg-[#701A23] rounded-full shrink-0 mt-0.5" />
-          <div>
-            <h2 className="font-ubuntu font-bold text-[14.5px] sm:text-[15.5px] text-[#1A1918] tracking-tight leading-tight">
-              Today&apos;s Summary
-            </h2>
-            <p className="font-ubuntu text-[11px] sm:text-[11.5px] text-[#68645E] mt-0.5 leading-normal">
-              {attentionLine}
-            </p>
-          </div>
-        </div>
-
-        {/* Developments Count Pill */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[#F0D5D3] bg-[#FCF4F3]/90 text-[#701A23] text-[11px] font-semibold font-dm-sans shrink-0 self-start sm:self-center shadow-xs">
-          <FileText className="w-3 h-3 text-[#701A23] shrink-0" />
-          <span>
-            {filteredItems.length} key development{filteredItems.length === 1 ? "" : "s"}
-          </span>
-        </div>
-      </div>
+      <p className="text-[12px] text-[#68645E] font-ubuntu">{attentionLine}</p>
 
       {actionError && (
         <p role="alert" className="mt-2 text-[11.5px] text-[#B42318] font-dm-sans">

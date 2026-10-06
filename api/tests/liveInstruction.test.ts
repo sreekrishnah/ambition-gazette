@@ -16,7 +16,7 @@ const item = {
   relevanceBasis: 'ambition',
   relevanceScore: 0.8,
   attention: 'act',
-  assumption: { id: 'a1', statement: 'Solar alone will be enough for my clients', note: 'Storage demand is rising.' },
+  assumption: { id: 'a1', statement: 'Solar alone will be enough for my clients', note: 'Storage demand is rising.', reconsider: null, effect: 'challenges' as const },
   evidenceStrength: 'single_source',
   worldSignificance: 0.6,
   ambitionId: 'am1',
@@ -43,6 +43,14 @@ const ctx = {
 
 describe('buildLiveInstruction', () => {
   const text = buildLiveInstruction(ctx as never, new SessionRefs());
+
+  it('asks for plain words and keeps the conversation on topic', () => {
+    expect(text).toContain('PLAIN LANGUAGE');
+    expect(text).toContain('No fancy or formal words');
+    expect(text).toContain('STAYING ON TOPIC');
+    expect(text).toContain('That is outside what we are covering');
+    expect(text).not.toContain('deep-dive podcast');
+  });
 
   it('hosts a long, directed briefing instead of short answers', () => {
     expect(text).toContain('[Director:');
@@ -72,5 +80,17 @@ describe('buildLiveInstruction', () => {
   it('copes with an empty dossier', () => {
     const empty = buildLiveInstruction({ ...ctx, briefing: [] } as never, new SessionRefs());
     expect(empty).toContain('The dossier is empty');
+  });
+
+  it('names the ambition at most once instead of reciting it every story', () => {
+    expect(text).toContain('at most once in the whole briefing');
+    expect(text).toContain('never recite the wording of their ambitions');
+  });
+
+  it('checks in after a story, collects feedback with the tools, and ends with a thank-you', () => {
+    expect(text).toContain('check whether anything is unclear');
+    expect(text).toContain('record every piece of feedback with the tools');
+    expect(text).toContain('a short thank-you and goodbye');
+    expect(text).toContain('Do not ask what they would like to dig into');
   });
 });

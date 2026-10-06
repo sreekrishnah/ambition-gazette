@@ -1,13 +1,17 @@
+import { SignalEffect } from '../domain/beliefs';
 import { ATTENTION_RANK } from '../domain/attention';
 import { Attention, Continuity, RelevanceBasis, isAttention, isContinuity } from '../domain/types';
 import { createLogger } from '../lib/logger';
 import { supabase, unwrap, unwrapMaybe, unwrapVoid } from '../lib/supabase';
+import { recomputeUserAssumptions } from './assumptions';
 import { DevelopmentRecord, EvaluatedDevelopment, evaluateMany, loadDevelopments, loadUserContext } from './relevance';
 import { pickMustKnowEvents } from './worldEvents';
 
 const log = createLogger('briefing');
 
 const WINDOW_DAYS = 14;
+// Every development in the window is weighed against the plan; a lower cap silently dropped older ones that still mattered.
+const WINDOW_MAX_DEVELOPMENTS = 500;
 
 export interface BriefingSource {
   name: string;
@@ -31,7 +35,7 @@ export interface BriefingItem {
   relevanceScore: number;
   attention: Attention;
   // Set only when the development bears on an assumption the user stated for the linked ambition.
-  assumption: { id: string; statement: string; note: string } | null;
+  assumption: { id: string; statement: string; note: string; reconsider: string | null; effect: SignalEffect } | null;
   evidenceStrength: string | null;
   worldSignificance: number | null;
   ambitionId: string | null;
@@ -101,7 +105,7 @@ async function loadImages(developmentIds: string[]): Promise<Map<string, string>
   return images;
 }
 
-async function loadSources(developmentIds: string[]): Promise<Map<string, BriefingSource[]>> {
+export async function loadSources(developmentIds: string[]): Promise<Map<string, BriefingSource[]>> {
   const bySource = new Map<string, BriefingSource[]>();
   if (developmentIds.length === 0) return bySource;
   const rows = unwrap(
@@ -156,11 +160,12 @@ export async function buildBriefing(
 ): Promise<BriefingBuildResult> {
   const ctx = await loadUserContext(userId);
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000);
-  const devs = await loadDevelopments(options.storyId ? { storyId: options.storyId, limit: 50 } : { since, limit: 150 });
+  const devs = await loadDevelopments(options.storyId ? { storyId: options.storyId, limit: 50 } : { since, limit: WINDOW_MAX_DEVELOPMENTS });
   const devById = new Map(devs.map((d) => [d.id, d]));
   const { evaluated, failed } = await evaluateMany(ctx, devs, (done, total) =>
     options.onProgress?.(`Matching events to your ambitions (${done} of ${total})`),
   );
+  await recomputeUserAssumptions(userId);
   options.onProgress?.('Checking for unavoidable world events');
   // A story-scoped rebuild (after feedback on one story) leaves the world-events judgement alone.
   const worldEvents = options.storyId ? [] : await pickMustKnowEvents(ctx, devs, evaluated);
@@ -205,8 +210,10 @@ export async function buildBriefing(
         relevance_reason: item.decision.factors.map((f) => f.detail).join('; ') || null,
         relevance_basis: item.decision.basis,
         attention: item.decision.attention,
-        assumption_id: item.decision.assumption?.effect === 'challenges' ? item.decision.assumption.assumptionId : null,
-        assumption_note: item.decision.assumption?.effect === 'challenges' ? item.decision.assumption.reason : null,
+        assumption_id: item.decision.assumption?.assumptionId ?? null,
+        assumption_note: item.decision.assumption?.reason ?? null,
+        assumption_effect: item.decision.assumption?.effect === 'none' ? null : (item.decision.assumption?.effect ?? null),
+        assumption_reconsider: item.decision.assumption?.effect === 'challenges' ? item.decision.assumption.reconsider?.trim() || null : null,
         personal_relevance: item.decision.personalRelevance,
         world_significance: dev.world_significance,
         confidence: item.decision.personalRelevance,
@@ -235,6 +242,8 @@ interface ReportItemRow {
   attention: string | null;
   assumption_id: string | null;
   assumption_note: string | null;
+  assumption_reconsider: string | null;
+  assumption_effect: SignalEffect | null;
   personal_relevance: number | null;
   world_significance: number | null;
   sources: BriefingSource[] | null;
@@ -310,7 +319,7 @@ export async function getReportItems(
     await supabase
       .from('report_items')
       .select(
-        'id, development_id, story_id, ambition_id, headline, summary, what_changed, continuity, why_it_matters, could_change, relevance_basis, attention, assumption_id, assumption_note, personal_relevance, world_significance, sources, developments(occurred_at, evidence_strength), stories(title, category, geography), ambitions(title), ambition_assumptions(statement)',
+        'id, development_id, story_id, ambition_id, headline, summary, what_changed, continuity, why_it_matters, could_change, relevance_basis, attention, assumption_id, assumption_note, assumption_reconsider, assumption_effect, personal_relevance, world_significance, sources, developments(occurred_at, evidence_strength), stories(title, category, geography), ambitions(title), ambition_assumptions(statement)',
       )
       .eq('report_id', report.id)
       .returns<ReportItemRow[]>(),
@@ -337,8 +346,8 @@ export async function getReportItems(
     relevanceScore: r.personal_relevance ?? 0,
     attention: isAttention(r.attention) ? r.attention : 'fyi',
     assumption:
-      r.assumption_id && r.ambition_assumptions && r.assumption_note
-        ? { id: r.assumption_id, statement: r.ambition_assumptions.statement, note: r.assumption_note }
+      r.assumption_id && r.ambition_assumptions && r.assumption_note && r.assumption_effect
+        ? { id: r.assumption_id, statement: r.ambition_assumptions.statement, note: r.assumption_note, reconsider: r.assumption_reconsider, effect: r.assumption_effect }
         : null,
     evidenceStrength: r.developments?.evidence_strength ?? null,
     worldSignificance: r.world_significance,

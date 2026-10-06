@@ -12,7 +12,6 @@ function errorMessage(err: unknown, fallback: string): string {
 
 export function useDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isAgentModalOpen, setIsAgentModalOpen] = useState<boolean>(false);
   const [isPersonalizeOpen, setIsPersonalizeOpen] = useState<boolean>(false);
 
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -154,8 +153,6 @@ export function useDashboard() {
   return {
     searchQuery,
     setSearchQuery,
-    isAgentModalOpen,
-    setIsAgentModalOpen,
     isPersonalizeOpen,
     setIsPersonalizeOpen,
     state: data?.state ?? null,

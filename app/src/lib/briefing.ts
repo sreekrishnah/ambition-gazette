@@ -36,6 +36,7 @@ export function toSummaryItem(item: BriefingItem): AISummaryItem {
     tracked: item.tracked,
     relevanceBasis: item.relevanceBasis,
     ambitionTitle: item.ambitionTitle,
+    ambitionId: item.ambitionId,
     occurredAt: item.occurredAt,
     attention: item.attention,
     assumption: item.assumption,

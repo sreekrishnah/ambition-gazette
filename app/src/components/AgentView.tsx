@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { AgentWidget } from "@/components/dashboard/AgentWidget";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { AgentHero } from "@/components/agent/AgentHero";
 import { DailyUpdatesCard } from "@/components/agent/DailyUpdatesCard";
@@ -145,6 +146,7 @@ export default function AgentView() {
           </div>
         </div>
       </main>
+      <AgentWidget />
     </div>
   );
 }

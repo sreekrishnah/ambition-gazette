@@ -151,8 +151,9 @@ const RelevanceSchema = z.object({
   ambition_aspect: z.string(),
   assumption_impact: z.object({
     assumption_id: z.string().nullable(),
-    effect: z.enum(['challenges', 'supports', 'none']),
+    effect: z.enum(['challenges', 'supports', 'opportunity', 'none']),
     reason: z.string(),
+    reconsider: z.string(),
   }),
 });
 export type RelevanceAssessment = z.infer<typeof RelevanceSchema>;
@@ -184,7 +185,7 @@ When relation is not "none", why_it_matters is 2 or 3 plain sentences addressed 
 could_change is one short sentence that opens with the equivalent of "This could" or "This may" in the output language that states the most plausible concrete consequence for the ambition, using only the facts given. It must not contain numbers, prices or dates that are not in the input, and must not recommend an action. When relation is "none", could_change is an empty string.
 Write why_it_matters and could_change in ${input.language}. Every other rule still applies in that language.
 ambition_aspect is the short phrase from the ambition that the development touches, or an empty string.
-assumption_impact checks the development against the person's stated assumptions (listed below with ids). Use effect "challenges" only when the development gives a specific, supportable reason to doubt one assumption, "supports" only when it gives a specific reason to keep it, and "none" otherwise; when effect is not "none", set assumption_id to the id of that one assumption (copied exactly) and write reason as one plain sentence in ${input.language} naming what changed. When there are no assumptions, relation is "none", or the link is only topical, use effect "none", assumption_id null and an empty reason.
+assumption_impact checks the development against the person's stated assumptions (listed below with ids). Use effect "challenges" only when the development itself reports a change in the specific condition the assumption states (the rule, price, availability, policy, number or deadline it names, or a concrete step that makes such a change likely); a general trend, an adjacent study, an opinion or a second-order effect is not enough, so use "none". The development must concern the same country, market, rule or party that the assumption names: a rule change in another country does not challenge an assumption about this one. Use "supports" only when the development reports that same condition holding or improving, never for loosely related good news. Use "opportunity" only when it creates a concrete possibility for this ambition that the assumption did not account for. Otherwise use "none". When effect is not "none", name the condition in the reason; when effect is not "none", set assumption_id to the id of that one assumption (copied exactly) and write reason as one plain sentence in ${input.language} naming what changed. When effect is "challenges", reconsider is one short question in ${input.language} naming the part of the plan the person may want to revisit (for example "Does your pricing still hold if ...?"); it must be a question, must not recommend an action and must not contain numbers that are not in the input. Otherwise reconsider is an empty string. When there are no assumptions, relation is "none", or the link is only topical, use effect "none", assumption_id null, an empty reason and an empty reconsider.
 
 Ambition: ${JSON.stringify(ambition)}
 Known facts about the person: ${JSON.stringify(input.identity)}
@@ -276,6 +277,8 @@ export function writeChapterScript(input: {
   couldChange: string | null;
   assumption: { statement: string; note: string } | null;
   nextTitle: string | null;
+  // The ambition is named once per briefing: the first story may, later stories avoid it, and a retry hides it.
+  ambition: 'may_name' | 'avoid' | 'hidden';
 }): Promise<ChapterScriptParts> {
   const clean = (value: string | null | undefined, max: number) => sanitizeUntrusted(value, max);
   const listener = {
@@ -283,7 +286,7 @@ export function writeChapterScript(input: {
     role: clean(input.listener.role, 100),
     activity: clean(input.listener.activity, 200),
     geography: clean(input.listener.geography, 100),
-    ambitions: input.listener.ambitions.map((a) => ({ title: clean(a.title, 200), description: clean(a.description, 400), horizon: clean(a.horizon, 80), geography: clean(a.geography, 100) })),
+    ambitions: input.ambition === 'hidden' ? [] : input.listener.ambitions.map((a) => ({ title: clean(a.title, 200), description: clean(a.description, 400), horizon: clean(a.horizon, 80), geography: clean(a.geography, 100) })),
   };
   const story = {
     kind: input.kind === 'world' ? 'an unavoidable world event, not about their field' : "a development linked to the person's ambition",
@@ -300,13 +303,13 @@ export function writeChapterScript(input: {
   };
   return generateStructured(
     'writeChapterScript',
-    `You write one story of a personal, spoken daily briefing, in the style of a deep-dive podcast, for a single listener. A host will perform your text aloud, so write for the ear: natural flowing sentences, no lists, no headings, no markdown, no links, no stage directions.
+    `You write one story of a personal, spoken daily briefing, in plain, friendly spoken English, for a single listener. A host will perform your text aloud, so write for the ear: natural flowing sentences, no lists, no headings, no markdown, no links, no stage directions. Use short sentences and everyday words, with no jargon, buzzwords or fancy phrases; if a technical term is needed, explain it in a few simple words.
 ${GROUNDING}
 ${UNTRUSTED_NOTICE}
 Return three parts, each about ${input.wordsPerPart} words:
 facts: what happened, when, and who reported it (name the outlets from reported_by). If earlier_history is present, say how the story has evolved and what is new compared with before. Then explain how the thing actually works in plain words with one concrete example or analogy. Mark general background knowledge as such ("in general", "typically") so it is never confused with what was reported.
 sides: both sides, argued properly. First the strongest case that this works in the listener's favour, with reasoning, then the strongest case for concern or caution, with reasoning. Say where the evidence is thin and what would settle it.
-for_you: what it means for this listener. Tie it to the specific words of their ambitions, role, region and time horizon: what it could change in their plan, which decision it could influence soon, and what to watch next (signals, dates, who to follow). If a stated assumption is challenged, say which. Never write a vague "this might affect you"; predictions are hedged ("could", "may"). Never invent an assumption the listener did not state. End with a natural bridge to the next story${input.nextTitle ? ` ("${clean(input.nextTitle, 120)}"), linking the two only where they genuinely connect` : ' only if there is one; this is the last story, so close it without a bridge'}.
+for_you: what it means for this listener. Tie it to their own situation (role, region, time horizon): what it could change in their plan, which decision it could influence soon, and what to watch next (signals, dates, who to follow). If a stated assumption is challenged, say which. ${input.ambition === 'may_name' ? 'You may name their overall ambition once, briefly.' : 'Do not name, quote or paraphrase their ambition, business or goal anywhere, and do not begin for_you with "For your plan to" or "Your plan to": open with the concrete effect (a decision, price, deadline or number) and say "your plan" if you must refer to it.'} Never write a vague "this might affect you"; predictions are hedged ("could", "may"). Never invent an assumption the listener did not state. End with a natural bridge to the next story${input.nextTitle ? ` ("${clean(input.nextTitle, 120)}"), linking the two only where they genuinely connect` : ' only if there is one; this is the last story, so close it without a bridge'}.
 Address the listener as "you". Write in ${input.language}.
 
 Listener: ${JSON.stringify(listener)}
@@ -329,7 +332,7 @@ export async function writeClosingScript(input: {
     `You write the closing of a personal, spoken daily briefing for one listener, about 150 words, written for the ear (no lists, no markdown, no links).
 ${GROUNDING}
 ${UNTRUSTED_NOTICE}
-Name the two or three things from today's stories that matter most for the listener's ambition and why, then the one thing to watch this week. Use only the stories and assessments below. End by asking what they would like to dig into. Address the listener as "you". Write in ${input.language}.
+Name the two or three things from today's stories that matter most for the listener's ambition and why, then the one thing to watch this week. Use only the stories and assessments below. Do not recite the wording of their ambition, and do not end with a question: a separate step asks for feedback. Address the listener as "you". Write in ${input.language}.
 
 Listener's ambitions: ${JSON.stringify(input.listener.ambitions.map((a) => ({ title: sanitizeUntrusted(a.title, 200), horizon: sanitizeUntrusted(a.horizon, 80) })))}
 Today's stories: ${untrusted('stories', JSON.stringify(stories))}`,
@@ -393,4 +396,37 @@ ${lines}`,
     SessionSummarySchema,
     { temperature: 0.1 },
   );
+}
+
+// ---------------------------------------------------------------
+// "What must stay true?": candidate assumptions the person may accept. Never stored without their action.
+// ---------------------------------------------------------------
+export const ASSUMPTION_AREAS = ['market', 'cost', 'competition', 'regulation', 'timing', 'funding', 'skills'] as const;
+
+const AssumptionSuggestionsSchema = z.object({
+  suggestions: z
+    .array(z.object({ area: z.enum(ASSUMPTION_AREAS), statement: z.string().min(5).max(300) }))
+    .max(6),
+});
+export type AssumptionSuggestion = z.infer<typeof AssumptionSuggestionsSchema>['suggestions'][number];
+
+export async function suggestAssumptions(input: {
+  ambition: { title: string; description: string | null; horizon: string | null; geography: string | null };
+  existing: string[];
+  language: string;
+}): Promise<AssumptionSuggestion[]> {
+  const clean = (value: string | null | undefined, max: number) => sanitizeUntrusted(value, max);
+  const result = await generateStructured(
+    'suggestAssumptions',
+    `You help one person state what must stay true for their plan to work, so that real-world news can later be tested against it.
+${GROUNDING}
+${UNTRUSTED_NOTICE}
+Return 4 to 6 candidate assumptions, each in a different area (${ASSUMPTION_AREAS.join(', ')}). Each statement is one plain sentence in ${input.language}, written in the first person ("my", "I"), that a future news development could confirm or contradict: something about prices, rules, demand, competition, funding, timing or availability that the plan quietly depends on. Do not state numbers, prices or dates that are not in the input. Do not repeat or rephrase an existing assumption. These are candidates for the person to accept or edit, not facts.
+
+Ambition: ${JSON.stringify({ title: clean(input.ambition.title, 200), description: clean(input.ambition.description, 500), horizon: clean(input.ambition.horizon, 80), geography: clean(input.ambition.geography, 120) })}
+Existing assumptions (JSON): ${JSON.stringify(input.existing.map((e) => clean(e, 240)))}`,
+    AssumptionSuggestionsSchema,
+    { temperature: 0.4 },
+  );
+  return result.suggestions;
 }

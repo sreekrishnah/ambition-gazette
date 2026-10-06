@@ -3,17 +3,16 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Home, Target, LogOut, Sparkles } from "lucide-react";
+import { Home, Target, LogOut } from "lucide-react";
 import { logoutUser } from "@/app/actions";
 import { clearClientSession } from "@/lib/auth";
 import { LogoutConfirmModal } from "@/components/dashboard/LogoutConfirmModal";
 
 interface DashboardSidebarProps {
-  onOpenAgentModal?: () => void;
   activeNav?: "home" | "ambitions" | "agent";
 }
 
-export function DashboardSidebar({ onOpenAgentModal, activeNav = "home" }: DashboardSidebarProps) {
+export function DashboardSidebar({ activeNav = "home" }: DashboardSidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -47,18 +46,6 @@ export function DashboardSidebar({ onOpenAgentModal, activeNav = "home" }: Dashb
             priority
           />
         </Link>
-
-        {onOpenAgentModal && (
-          <button
-            onClick={onOpenAgentModal}
-            type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#701A23] text-white text-[11px] font-medium font-dm-sans shadow-xs hover:bg-[#58141B] transition active:scale-95 cursor-pointer"
-            aria-label="Talk to AI Agent"
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>Talk to Gazzy</span>
-          </button>
-        )}
       </header>
 
       {/* 2. Mobile Bottom Navigation Bar (Fixed at bottom on < md screens) */}

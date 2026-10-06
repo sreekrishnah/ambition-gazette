@@ -8,26 +8,26 @@ export default function FeaturesSection() {
     {
       num: "01",
       icon: Target,
-      title: "Goal-aware intelligence",
-      desc: "Tell us what you're trying to accomplish. Ambition Gazette understands your goals, interests, and background to surface what's relevant to you.",
+      title: "Your plan, as testable assumptions",
+      desc: "State what must stay true for your ambition to work. Ambition Gazette keeps each assumption as a belief it can confirm or challenge, and suggests candidates you can accept or edit.",
     },
     {
       num: "02",
       icon: Layers,
-      title: "Persistent story tracking",
-      desc: "We track real-world events as they evolve over time, connecting related developments into a single story so you don't miss the bigger picture.",
+      title: "Evidence, tracked over time",
+      desc: "Real-world developments are stored as evidence for or against an assumption. One report puts it on watch; corroboration asks you to reconsider; later evidence builds on the earlier.",
     },
     {
       num: "03",
       icon: FileText,
-      title: "Clear, relevant explanations",
-      desc: "When something new happens, we explain what changed, why it matters to your situation, and what it could change for you.",
+      title: "Proof, not a hunch",
+      desc: "Every flag shows the sources, the development, the assumption and the ambition it touches, and separates what was reported from our own assessment.",
     },
     {
       num: "04",
       icon: Sliders,
-      title: "Feedback that improves results",
-      desc: "Mark developments as relevant or not. Your feedback refines your profile, so future recommendations become even more personalized.",
+      title: "Your decision stays yours",
+      desc: "Keep the assumption, modify it, change the plan or dismiss the evidence. Each answer is recorded, and only newer developments can raise it again.",
     },
   ];
 

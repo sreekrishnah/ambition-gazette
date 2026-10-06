@@ -6,6 +6,7 @@ import dashboardRouter from './dashboard';
 import feedbackRouter from './feedback';
 import memoryRouter from './memory';
 import pipelineRouter from './pipeline';
+import planRouter from './plan';
 import storyRouter from './story';
 
 const router = Router();
@@ -21,6 +22,7 @@ router.use('/memory', memoryRouter);
 router.use('/story', storyRouter);
 router.use('/feedback', feedbackRouter);
 router.use('/pipeline', pipelineRouter);
+router.use('/plan', planRouter);
 router.use('/agent', agentRouter);
 
 export default router;

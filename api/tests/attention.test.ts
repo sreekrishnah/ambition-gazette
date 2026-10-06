@@ -15,7 +15,25 @@ describe('effectiveImpact', () => {
   });
 });
 
+describe('effectiveImpact for other effects', () => {
+  it('gates confirmations and opportunities exactly like challenges', () => {
+    const supports = { ...challenge, effect: 'supports' as const };
+    const opportunity = { ...challenge, effect: 'opportunity' as const };
+    expect(effectiveImpact(supports, 'indirect', 0.9)).toBeNull();
+    expect(effectiveImpact(supports, 'direct', 0.4)).toBeNull();
+    expect(effectiveImpact(supports, 'direct', 0.8)).toEqual(supports);
+    expect(effectiveImpact(opportunity, 'indirect', 0.9)).toBeNull();
+    expect(effectiveImpact(opportunity, 'direct', 0.8)).toEqual(opportunity);
+  });
+});
+
 describe('decideAttention', () => {
+  it('shows an opportunity as worth knowing but never as needing attention', () => {
+    expect(decideAttention({ basis: 'general', score: 0.2, impact: { ...challenge, effect: 'opportunity' } })).toBe('know');
+  });
+  it('does not raise attention for a confirmation', () => {
+    expect(decideAttention({ basis: 'general', score: 0.2, impact: { ...challenge, effect: 'supports' } })).toBe('fyi');
+  });
   it('puts a challenged assumption first', () => {
     expect(decideAttention({ basis: 'general', score: 0.2, impact: challenge })).toBe('act');
   });

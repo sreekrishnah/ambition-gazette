@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Check, Target, RefreshCw, AlertCircle } from "lucide-react";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { AgentWidget } from "@/components/dashboard/AgentWidget";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { AmbitionHeroBanner } from "@/components/ambitions/AmbitionHeroBanner";
 import { AmbitionDetailsCard } from "@/components/ambitions/AmbitionDetailsCard";
@@ -209,6 +210,8 @@ export default function AmbitionsView() {
           onSave={handleSaveEdit}
         />
       )}
+
+      <AgentWidget />
 
       {/* Saved Toast Notification */}
       {isSavedToast && (

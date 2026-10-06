@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, Caveat, Ubuntu, DM_Sans } from "next/font/google";
 import { OfflineBanner } from "@/components/common/OfflineBanner";
+import { AgentProvider } from "@/components/dashboard/AgentProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -20,8 +21,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Ambition Gazette | Personal Intelligence Engine",
-  description: "Trace events across time. Connect them to your ambitions. Ambition Gazette tracks evolving real-world events, remembers what you're trying to accomplish, and shows you when something truly changes your situation.",
+  title: "Ambition Gazette | Reality Monitor for Your Plans",
+  description: "Ambition Gazette watches reality for changes that could make your plan wrong. State what must stay true, and see the evidence when an assumption stops holding.",
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -44,7 +45,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.variable} ${playfair.variable} ${caveat.variable} ${ubuntu.variable} ${dmSans.variable} bg-[#FAF8F5] text-[#1A1918] min-h-screen antialiased selection:bg-[#701A23]/15 selection:text-[#701A23]`}>
         <OfflineBanner />
-        {children}
+        <AgentProvider>{children}</AgentProvider>
       </body>
     </html>
   );

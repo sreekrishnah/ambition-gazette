@@ -1,4 +1,4 @@
-import type { Attention, Continuity, EvidenceStrength, RelevanceBasis } from "@/types/api";
+import type { AssumptionEffect, Attention, Continuity, EvidenceStrength, RelevanceBasis } from "@/types/api";
 
 export interface AISummarySource {
   id: string;
@@ -27,6 +27,7 @@ export interface AISummaryItem {
   ambitionTitle?: string | null;
   occurredAt?: string;
   attention?: Attention;
-  assumption?: { id: string; statement: string; note: string } | null;
+  assumption?: { id: string; statement: string; note: string; reconsider: string | null; effect: AssumptionEffect } | null;
+  ambitionId?: string | null;
   evidenceStrength?: EvidenceStrength | null;
 }

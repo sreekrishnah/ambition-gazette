@@ -38,7 +38,7 @@ export function AIAgentCard({ onOpenAgentModal }: AIAgentCardProps) {
       <div className="flex items-center justify-between mt-2.5 gap-2">
         <div className="flex-1 min-w-0 pr-1 sm:pr-2">
           <p className="text-[11px] sm:text-[11.5px] text-[#68645E] leading-relaxed max-w-[240px] font-ubuntu">
-            I can help you understand these developments, find opportunities, and plan your next steps.
+            Ask about your plan, out loud.
           </p>
           <button
             onClick={onOpenAgentModal}
@@ -50,7 +50,7 @@ export function AIAgentCard({ onOpenAgentModal }: AIAgentCardProps) {
               <span className="w-[1.5px] h-3 bg-white rounded-full"></span>
               <span className="w-[1.5px] h-2 bg-white rounded-full"></span>
             </span>
-            <span>Talk to Agent</span>
+            <span>Call</span>
             <span className="text-xs">→</span>
           </button>
         </div>

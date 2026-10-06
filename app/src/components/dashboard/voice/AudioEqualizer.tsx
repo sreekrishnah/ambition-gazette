@@ -12,17 +12,17 @@ export function AudioEqualizer({ state, audioLevel }: AudioEqualizerProps) {
   // 5 vertical bars with reduced compact heights
   const barHeights = useMemo(() => {
     if (state === "stopped" || state === "idle" || state === "error") {
-      return [3, 5, 7, 5, 3];
+      return [4, 6, 9, 6, 4];
     }
 
     if (state === "processing" || state === "connecting") {
-      return [4, 9, 13, 9, 4];
+      return [5, 11, 16, 11, 5];
     }
 
     const base = [0.42, 0.78, 1.0, 0.72, 0.45];
     return base.map((factor) => {
-      const minH = 3;
-      const maxH = 14;
+      const minH = 4;
+      const maxH = 18;
       const calcH = minH + (maxH - minH) * Math.min(1, Math.max(0.1, audioLevel * 1.5 * factor));
       return Math.round(calcH);
     });
@@ -48,13 +48,13 @@ export function AudioEqualizer({ state, audioLevel }: AudioEqualizerProps) {
   }, [state]);
 
   return (
-    <div className="flex items-center justify-center gap-1.5 select-none">
+    <div className="flex items-center justify-center gap-2 select-none">
       {/* 5-Bar Amber Audio Equalizer */}
-      <div className="flex items-center gap-[2px] h-4 justify-center">
+      <div className="flex items-center gap-[3px] h-5 justify-center">
         {barHeights.map((h, i) => (
           <span
             key={i}
-            className={`w-[2px] rounded-full transition-all duration-75 ${
+            className={`w-[3px] rounded-full transition-all duration-75 ${
               state === "stopped" || state === "idle" || state === "error"
                 ? "bg-[#D97706]/45"
                 : state === "processing" || state === "connecting"
@@ -70,7 +70,7 @@ export function AudioEqualizer({ state, audioLevel }: AudioEqualizerProps) {
       </div>
 
       {/* State Text */}
-      <span className="text-[12.5px] font-dm-sans font-normal text-[#D2CBC2] tracking-wide">
+      <span className="text-[12px] sm:text-[13px] font-dm-sans font-normal text-[#D2CBC2] tracking-wide">
         {stateText}
       </span>
     </div>

@@ -33,22 +33,21 @@ export default function HeroSection() {
               {/* Eyebrow */}
               <div className="inline-block">
                 <span className="text-[11px] sm:text-[12px] font-semibold tracking-[0.18em] text-[#8A847C] uppercase">
-                  Real Events. Clearer Impact.
+                  Plans rest on assumptions
                 </span>
               </div>
 
               {/* Headline */}
               <h1 className="font-serif text-[30px] min-[380px]:text-[36px] sm:text-[48px] md:text-[56px] lg:text-[68px] font-normal leading-[1.08] tracking-[-0.02em] text-[#1A1918]">
-                Trace events <br />
-                across time. <br />
-                <span className="text-[#701A23]">Connect them</span> <br />
-                <span className="text-[#701A23]">to your ambitions.</span>
+                Know when <br />
+                reality changes <br />
+                <span className="text-[#701A23]">the assumptions</span> <br />
+                <span className="text-[#701A23]">behind your plan.</span>
               </h1>
 
               {/* Body */}
               <p className="text-[14px] sm:text-[16px] text-[#615C55] leading-[1.6] max-w-lg font-sans">
-                A briefing that remembers the stories you follow and tells you only when something changes your plan. On quiet days, it says so, and shows what it set aside and why.
-              </p>
+                Ambition Gazette watches the world for evidence that an assumption behind your plan no longer holds. It shows the sources, the assumption it affects and what you may want to reconsider. On a quiet day it says nothing has changed, and shows how much it set aside.</p>
 
               {/* Action Button: Get Started only */}
               <div className="pt-1 sm:pt-2">

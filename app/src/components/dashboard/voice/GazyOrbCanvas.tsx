@@ -506,7 +506,7 @@ export function GazyOrbCanvas({ state, audioLevel, className = "" }: GazyOrbCanv
 
   return (
     <div
-      className={`relative w-[210px] h-[210px] min-[380px]:w-[240px] min-[380px]:h-[240px] sm:w-[250px] sm:h-[250px] flex items-center justify-center select-none pointer-events-none ${className}`}
+      className={`relative w-[190px] h-[190px] min-[380px]:w-[215px] min-[380px]:h-[215px] sm:w-[230px] sm:h-[230px] flex items-center justify-center select-none pointer-events-none ${className}`}
     >
       {/* 1. BACK CANVAS: Orbital ring arcs and particles passing BEHIND the orb (z < 0) */}
       <canvas
@@ -516,7 +516,7 @@ export function GazyOrbCanvas({ state, audioLevel, className = "" }: GazyOrbCanv
 
       {/* 2. THE WEBGL FLUID SPHERE: Reduced diameter with luminous inner white glow */}
       <div
-        className="relative w-[116px] h-[116px] min-[380px]:w-[130px] min-[380px]:h-[130px] sm:w-[138px] sm:h-[138px] rounded-full overflow-hidden shrink-0 z-20"
+        className="relative w-[104px] h-[104px] min-[380px]:w-[118px] min-[380px]:h-[118px] sm:w-[126px] sm:h-[126px] rounded-full overflow-hidden shrink-0 z-20"
         style={{
           boxShadow:
             "inset 0 0 14px 2px rgba(255, 255, 255, 0.72), inset 0 0 3px 0.8px rgba(255, 255, 255, 0.95)",

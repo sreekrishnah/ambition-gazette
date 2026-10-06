@@ -89,7 +89,7 @@ export function PropagationGraph({ item }: PropagationGraphProps) {
       role="group"
       aria-label="How this development reaches your ambition"
     >
-      <Node label="Evidence" tone="border-[#DDE3EA] bg-[#F4F6F9] text-[#2E3A4A]">
+      <Node label="News sources" tone="border-[#DDE3EA] bg-[#F4F6F9] text-[#2E3A4A]">
         <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
           {item.sources.slice(0, 3).map((source) => (
             <li key={source.id} className="text-[11px] font-medium font-dm-sans break-words">
@@ -99,9 +99,9 @@ export function PropagationGraph({ item }: PropagationGraphProps) {
         </ul>
       </Node>
 
-      <Edge label="reports" />
+      <Edge label="report" />
 
-      <Node label="Development" tone="border-[#CFDDF3] bg-[#F1F6FD] text-[#1E3A66]">
+      <Node label="What happened" tone="border-[#CFDDF3] bg-[#F1F6FD] text-[#1E3A66]">
         <p className="text-[11.5px] font-semibold leading-snug mt-1 font-ubuntu">{item.title}</p>
         <p className="text-[10px] mt-1 opacity-80 font-dm-sans">
           {item.continuity ? CONTINUITY_LABELS[item.continuity] : "Development"}
@@ -109,14 +109,31 @@ export function PropagationGraph({ item }: PropagationGraphProps) {
         </p>
       </Node>
 
-      <Edge label="matters to" />
+      {item.assumption && (
+        <>
+          <Edge label="affects" />
+          <Node label="What you assumed" tone="border-[#F0D5D3] bg-[#FFF8F7] text-[#701A23]">
+            <p className="text-[11.5px] font-semibold leading-snug mt-1 font-ubuntu">&ldquo;{item.assumption.statement}&rdquo;</p>
+            <p className="text-[10.5px] mt-1 leading-snug text-[#4A4742] font-dm-sans">
+              <span className="font-semibold">Why this could be wrong (AI&apos;s view):</span> {item.assumption.note}
+            </p>
+          </Node>
+        </>
+      )}
 
-      <Node label="Your ambition" tone="border-[#F0D5D3] bg-[#FCF4F3] text-[#701A23]">
+      <Edge label={item.assumption ? "which supports" : "affects"} />
+
+      <Node label="Your goal" tone="border-[#F0D5D3] bg-[#FCF4F3] text-[#701A23]">
         <p className="text-[11.5px] font-semibold leading-snug mt-1 font-ubuntu">{item.ambitionTitle}</p>
         <p className="text-[10.5px] mt-1 leading-snug text-[#4A4742] font-dm-sans">{item.whyItMatters}</p>
         {item.couldChange && (
           <p className="text-[10.5px] mt-1.5 leading-snug text-[#701A23] font-dm-sans">
             <span className="font-semibold">What this could change:</span> {item.couldChange}
+          </p>
+        )}
+        {item.assumption?.reconsider && (
+          <p className="text-[10.5px] mt-1.5 leading-snug text-[#701A23] font-dm-sans">
+            <span className="font-semibold">Think about this:</span> {item.assumption.reconsider}
           </p>
         )}
       </Node>

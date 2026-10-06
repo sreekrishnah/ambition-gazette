@@ -9,6 +9,9 @@ import type {
   AgentDayResponse,
   AgentDaysResponse,
   Assumption,
+  AssumptionDecision,
+  AssumptionSuggestion,
+  PlanStatus,
   Evolution,
   AmbitionsResponse,
   DashboardResponse,
@@ -54,6 +57,11 @@ export const api = {
   getLens: () => request<LensResponse>("GET", "/dashboard/lens"),
   getStoryTimeline: (storyId: string) =>
     request<StoryTimelineResponse>("GET", `/story/${encodeURIComponent(storyId)}/timeline?peek=1`),
+  getPlanStatus: () => request<{ success: true; plan: PlanStatus }>("GET", "/plan/status"),
+  decideAssumption: (ambitionId: string, id: string, decision: AssumptionDecision) =>
+    request<{ success: true; assumption: Assumption }>("POST", `/ambition/${encodeURIComponent(ambitionId)}/assumptions/${encodeURIComponent(id)}/decision`, { decision }),
+  suggestAssumptions: (ambitionId: string) =>
+    request<{ success: true; suggestions: AssumptionSuggestion[] }>("POST", `/ambition/${encodeURIComponent(ambitionId)}/assumptions/suggest`, {}),
   getAmbitions: () => request<AmbitionsResponse>("GET", "/ambition"),
   updateAmbition: (id: string, update: AmbitionUpdate) =>
     request<{ success: true }>("PATCH", `/ambition/${encodeURIComponent(id)}`, update),
@@ -62,6 +70,12 @@ export const api = {
     request<{ success: true; assumptions: Assumption[] }>("GET", `/ambition/${encodeURIComponent(ambitionId)}/assumptions`),
   addAssumption: (ambitionId: string, statement: string) =>
     request<{ success: true; assumption: Assumption }>("POST", `/ambition/${encodeURIComponent(ambitionId)}/assumptions`, { statement }),
+  updateAssumption: (ambitionId: string, id: string, statement: string) =>
+    request<{ success: true; assumption: Assumption }>(
+      "PATCH",
+      `/ambition/${encodeURIComponent(ambitionId)}/assumptions/${encodeURIComponent(id)}`,
+      { statement },
+    ),
   restoreAssumption: (ambitionId: string, id: string) =>
     request<{ success: true; assumption: Assumption }>(
       "PATCH",

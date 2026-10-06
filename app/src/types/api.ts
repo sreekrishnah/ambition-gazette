@@ -57,7 +57,7 @@ export interface BriefingItem {
   relevanceBasis: RelevanceBasis;
   relevanceScore: number;
   attention: Attention;
-  assumption: { id: string; statement: string; note: string } | null;
+  assumption: { id: string; statement: string; note: string; reconsider: string | null; effect: AssumptionEffect } | null;
   evidenceStrength: EvidenceStrength | null;
   worldSignificance: number | null;
   ambitionId: string | null;
@@ -273,10 +273,16 @@ export interface StoryTimelineResponse {
   developments: TimelineDevelopment[];
 }
 
+export type AssumptionState = "stable" | "watch" | "reconsider";
+export type AssumptionEffect = "challenges" | "supports" | "opportunity";
+export type AssumptionDecision = "keep" | "dismiss" | "change_plan";
+
 export interface Assumption {
   id: string;
   statement: string;
-  status: "holding" | "challenged";
+  status: "holding" | "watch" | "challenged";
+  state: AssumptionState;
+  decidedAt: string | null;
   challengedAt: string | null;
   challengeReason: string | null;
   createdAt: string;
@@ -320,4 +326,55 @@ export interface EvolutionPeriod {
   start: string;
   summary: string | null;
   developments: EvolutionEntry[];
+}
+
+export interface PlanEvidence {
+  developmentId: string;
+  effect: AssumptionEffect;
+  reason: string;
+  reconsider: string | null;
+  headline: string;
+  occurredAt: string;
+  publisherCount: number;
+  counts: boolean;
+  sources: Array<{ name: string; url: string }>;
+}
+
+export interface PlanTimelineEntry {
+  at: string;
+  kind: "recorded" | "evidence" | "decision";
+  effect?: AssumptionEffect;
+  decision?: AssumptionDecision;
+  text: string;
+}
+
+export interface PlanAssumption {
+  id: string;
+  statement: string;
+  state: AssumptionState;
+  threats: number;
+  confirmations: number;
+  opportunities: number;
+  decidedAt: string | null;
+  evidence: PlanEvidence[];
+  timeline: PlanTimelineEntry[];
+}
+
+export interface PlanAmbition {
+  id: string;
+  title: string;
+  state: AssumptionState;
+  assumptions: PlanAssumption[];
+}
+
+export interface PlanStatus {
+  ambitions: PlanAmbition[];
+  totals: { assumptions: number; stable: number; watch: number; reconsider: number; confirmations: number; opportunities: number };
+  checked: number;
+  setAside: number;
+}
+
+export interface AssumptionSuggestion {
+  area: string;
+  statement: string;
 }

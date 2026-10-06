@@ -44,7 +44,13 @@ function SourceBadge({ source }: { source: AISummarySource }) {
   );
 }
 
-const ACTION = "inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-[11px] font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+const ASSUMPTION_LEAD = {
+  challenges: "Could hurt this part of your plan:",
+  supports: "Backs up this part of your plan:",
+  opportunity: "A new chance for your plan:",
+} as const;
+
+const ACTION ="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-[11px] font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 const ACTION_QUIET = `${ACTION} border-[#ECE7DF] bg-white text-[#524E48] hover:bg-[#FAF8F5] hover:text-[#1A1918]`;
 
 /** One event as an accordion row: picture, headline and outlet when closed; the full explanation when open. */
@@ -106,7 +112,7 @@ export function EventRow({ item, open, onToggle, pending, markedRelevant, onTogg
             <p className="mt-2.5 flex gap-2 text-[12px] sm:text-[12.5px] text-[#2C2926] leading-relaxed bg-[#FCF4F3] border border-[#F0D5D3] rounded-lg px-3 py-2">
               <Lightbulb className="w-4 h-4 shrink-0 mt-0.5 text-[#701A23]" aria-hidden="true" />
               <span>
-                <span className="font-semibold text-[#701A23]">Why this matters to you (our assessment):</span> {item.whyItMatters}
+                <span className="font-semibold text-[#701A23]">Why this matters to you (AI&apos;s view):</span> {item.whyItMatters}
               </span>
             </p>
           )}
@@ -115,7 +121,13 @@ export function EventRow({ item, open, onToggle, pending, markedRelevant, onTogg
             <p className="mt-2 flex gap-2 text-[12px] text-[#701A23] leading-relaxed border border-[#F0D5D3] rounded-lg px-3 py-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
               <span>
-                <span className="font-semibold">May challenge your assumption:</span> &ldquo;{item.assumption.statement}&rdquo;. {item.assumption.note}
+                <span className="font-semibold">{ASSUMPTION_LEAD[item.assumption.effect]}</span> &ldquo;{item.assumption.statement}&rdquo;. {item.assumption.note}
+                {item.assumption.reconsider && (
+                  <>
+                    {" "}
+                    <span className="font-semibold">Think about this:</span> {item.assumption.reconsider}
+                  </>
+                )}
               </span>
             </p>
           )}

@@ -21,9 +21,9 @@ export default function AboutSection() {
             </div>
 
             <h2 className="font-serif text-[26px] min-[380px]:text-[32px] sm:text-[44px] lg:text-[48px] font-normal leading-[1.1] text-[#1A1918]">
-              A calmer way <br />
-              to understand <br />
-              <span className="text-[#701A23]">a changing world.</span>
+              A plan is only <br />
+              as good as <br />
+              <span className="text-[#701A23]">what it assumes.</span>
             </h2>
 
             <div className="space-y-3 sm:space-y-4 text-[14px] sm:text-[16px] text-[#615C55] leading-relaxed">

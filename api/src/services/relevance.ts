@@ -4,7 +4,7 @@ import { AmbitionAssessment, AmbitionCandidate, DevelopmentFacts, RelevanceDecis
 import { MemoryRow } from '../domain/types';
 import { createLogger } from '../lib/logger';
 import { rpcRows, supabase, unwrap, unwrapMaybe, unwrapVoid } from '../lib/supabase';
-import { AssumptionRow, assumptionsKey, listAssumptions, markChallenged } from './assumptions';
+import { AssumptionRow, assumptionsKey, listAssumptions, recordSignal, retractSignals } from './assumptions';
 import { getActiveMemory, getIdentity, retrieveSimilarMemory } from './memory';
 
 const log = createLogger('relevance');
@@ -34,7 +34,13 @@ interface DevelopmentRecord {
   story_sources: Array<{ publisher: string | null }> | null;
 }
 
+// Raised whenever the assessment prompt or schema changes, so older cached judgements are redone.
+const ASSESSMENT_VERSION = 4;
+// Earlier versions judged assumptions with a looser rule; a stricter rule cannot turn "no impact" into an impact, so those stay valid.
+const PREVIOUS_VERSIONS = [2, 3];
+
 interface CachedAssessment extends AmbitionAssessment {
+  version?: number;
   language?: string;
   ambitionId: string;
   ambitionUpdatedAt: string;
@@ -168,7 +174,7 @@ async function runAssessment(
   const known = assumptions.some((a) => a.id === impact.assumption_id);
   const assumptionImpact: AssumptionImpact | null =
     impact.effect !== 'none' && impact.assumption_id && known && impact.reason.trim()
-      ? { assumptionId: impact.assumption_id, effect: impact.effect, reason: impact.reason.trim() }
+      ? { assumptionId: impact.assumption_id, effect: impact.effect, reason: impact.reason.trim(), reconsider: impact.effect === 'challenges' ? impact.reconsider.trim() : '' }
       : null;
   return {
     ambitionId: ambition.id,
@@ -178,6 +184,7 @@ async function runAssessment(
     whyItMatters: result.why_it_matters.trim(),
     couldChange: result.could_change.trim(),
     assumptionImpact,
+    version: ASSESSMENT_VERSION,
     assumptionsKey: assumptionsKey(assumptions),
     interestsKey: ctx.interests.join('|'),
     language: ctx.reportLanguage,
@@ -220,15 +227,26 @@ export async function evaluateDevelopment(ctx: UserRelevanceContext, dev: Develo
   let decision = decideRelevance({ ...base, assessment: null });
   if (decision.needsAmbitionAssessment && ambition) {
     const cached = await loadCachedAssessment(ctx.userId, dev.id);
-    // Assessments cached before could_change existed are re-run so the field is filled.
-    const usable = cached && cached.ambitionId === ambition.id && cached.ambitionUpdatedAt === ambition.updated_at && typeof cached.couldChange === 'string' && cached.language === ctx.reportLanguage && cached.assumptionsKey === assumptionsKey(ambitionAssumptions) && cached.interestsKey === ctx.interests.join('|');
+    const usable = cached && (cached.version === ASSESSMENT_VERSION || (PREVIOUS_VERSIONS.includes(cached.version ?? 0) && !cached.assumptionImpact)) && cached.ambitionId === ambition.id && cached.ambitionUpdatedAt === ambition.updated_at && typeof cached.couldChange === 'string' && cached.language === ctx.reportLanguage && cached.assumptionsKey === assumptionsKey(ambitionAssumptions) && cached.interestsKey === ctx.interests.join('|');
     assessment = usable ? cached : null;
     if (!assessment) assessment = await runAssessment(ctx, dev, ambition, ambitionAssumptions);
     // Only an assumption recorded before the development happened can be challenged by it.
     const recorded = ambitionAssumptions.find((a) => a.id === assessment?.assumptionImpact?.assumptionId);
     const dated = recorded && new Date(recorded.updated_at).getTime() < new Date(dev.occurred_at).getTime() ? assessment : { ...assessment, assumptionImpact: null };
     decision = decideRelevance({ ...base, assessment: dated });
-    if (decision.assumption?.effect === 'challenges') await markChallenged(decision.assumption.assumptionId, dev.id, decision.assumption.reason);
+    const impact = decision.assumption;
+    if (!impact || impact.effect === 'none') await retractSignals(ctx.userId, dev.id);
+    if (impact && impact.effect !== 'none' && assessment) {
+      await recordSignal(ctx.userId, impact.assumptionId, {
+        developmentId: dev.id,
+        effect: impact.effect,
+        reason: impact.reason,
+        reconsider: impact.reconsider?.trim() || null,
+        confidence: assessment.confidence,
+        publisherCount: new Set(facts.publishers).size,
+        occurredAt: dev.occurred_at,
+      });
+    }
   }
 
   unwrapVoid(

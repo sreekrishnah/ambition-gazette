@@ -33,6 +33,8 @@ const END_TIMEOUT_MS = 5000;
 const LEVEL_INTERVAL_MS = 50;
 const PLAYBACK_LEAD_SEC = 0.05;
 const START_ERROR = "Voice session could not be started";
+// Longest a finished call keeps its audio open so the last words are heard in full.
+const MAX_DRAIN_MS = 8000;
 
 const SERVER_STATES: Record<string, VoiceState> = {
   connecting: "connecting",
@@ -111,7 +113,9 @@ export function createLiveSession(token: string, language: string, handlers: Liv
     reconnection: false,
   });
 
-  const isSending = () => !muted && !held;
+  // Set once the server has ended the call; the microphone stops and only the queued farewell keeps playing.
+  let ending = false;
+  const isSending = () => !muted && !held && !ending;
 
   // Which microphone was opened and which processing the browser really applied, for diagnosing bad audio.
   const reportMicrophone = (media: MediaStream, contextRate: number) => {
@@ -197,6 +201,15 @@ export function createLiveSession(token: string, language: string, handlers: Liv
   const setState = (next: VoiceState) => {
     currentState = next;
     handlers.onState(next);
+  };
+
+  // The call is over for the user at once, but the audio already received is played to the end before it is released.
+  const finishAfterPlayback = () => {
+    if (ending || closed) return;
+    ending = true;
+    setState("stopped");
+    const queuedMs = outputCtx ? Math.max(0, (nextPlayTime - outputCtx.currentTime) * 1000) : 0;
+    setTimeout(() => shutdown(false), Math.min(queuedMs + 300, MAX_DRAIN_MS));
   };
 
   const startLevelLoop = () => {
@@ -305,7 +318,10 @@ export function createLiveSession(token: string, language: string, handlers: Liv
   };
 
   socket.on("connect_error", () => fail(START_ERROR));
-  socket.on("disconnect", () => fail("Voice connection was lost. Close and reopen to start again."));
+  socket.on("disconnect", () => {
+    // The server closes the connection after it ends a call; that is not a lost connection.
+    if (!ending) fail("Voice connection was lost. Close and reopen to start again.");
+  });
 
   socket.on("live:state", (payload: unknown) => {
     if (!isRecord(payload) || typeof payload.state !== "string") return;
@@ -314,8 +330,7 @@ export function createLiveSession(token: string, language: string, handlers: Liv
     if (mapped === "error") {
       fail("Voice session ended with an error.");
     } else if (mapped === "stopped") {
-      setState("stopped");
-      shutdown(false);
+      finishAfterPlayback();
     } else {
       setState(mapped);
     }
@@ -344,10 +359,7 @@ export function createLiveSession(token: string, language: string, handlers: Liv
     fail(message);
   });
 
-  socket.on("live:ended", () => {
-    setState("stopped");
-    shutdown(false);
-  });
+  socket.on("live:ended", finishAfterPlayback);
 
   socket.timeout(START_TIMEOUT_MS).emit("live:start", { language }, (err: Error | null, ack: unknown) => {
     if (closed) return;

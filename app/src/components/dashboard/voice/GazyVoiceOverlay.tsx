@@ -5,13 +5,22 @@ import { X } from "lucide-react";
 import { GazyOrbCanvas } from "./GazyOrbCanvas";
 import { AudioEqualizer } from "./AudioEqualizer";
 import { TranscriptPill } from "./TranscriptPill";
-import { VoiceCallControls } from "./VoiceCallControls";
+import { VoiceCallClose, VoiceCallControls } from "./VoiceCallControls";
 import { useVoiceSession } from "./useVoiceSession";
 
 interface GazyVoiceOverlayProps {
   language: string;
   isOpen: boolean;
   onClose: () => void;
+}
+
+// mm:ss, or h:mm:ss for a call longer than an hour.
+function formatDuration(totalSec: number): string {
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
 }
 
 export function GazyVoiceOverlay({ isOpen, language, onClose }: GazyVoiceOverlayProps) {
@@ -25,14 +34,19 @@ export function GazyVoiceOverlay({ isOpen, language, onClose }: GazyVoiceOverlay
     isHeld,
     toggleHold,
     stopSession,
+    elapsedSec,
     error,
   } = useVoiceSession(isOpen, language);
+
+  // Once the call is over there is nothing to hang up, so every way out simply closes the screen.
+  const callEnded = state === "stopped";
 
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   const requestEndCall = useCallback(() => {
-    setShowEndConfirm(true);
-  }, []);
+    if (callEnded) onClose();
+    else setShowEndConfirm(true);
+  }, [callEnded, onClose]);
 
   const confirmEndCall = useCallback(() => {
     setShowEndConfirm(false);
@@ -87,14 +101,19 @@ export function GazyVoiceOverlay({ isOpen, language, onClose }: GazyVoiceOverlay
       />
 
       {/* 2. Top Navigation Bar: Minimal subtle Close button */}
-      <header className="relative z-10 w-full max-w-[1400px] px-6 sm:px-8 pt-4 pb-0 flex items-center justify-end">
+      <header className="relative z-10 w-full max-w-[1400px] px-6 sm:px-8 pt-4 pb-0 grid grid-cols-3 items-center">
+        <div />
+        <div role="timer" aria-label="Call duration" className="justify-self-center flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[14px] sm:text-[15px] font-dm-sans tabular-nums text-white/85">
+          {callEnded && <span className="text-white/55">Call ended</span>}
+          <span>{formatDuration(elapsedSec)}</span>
+        </div>
         <button
           onClick={requestEndCall}
           type="button"
           aria-label="Exit voice session"
-          className="text-white/40 hover:text-white/90 p-2 rounded-full hover:bg-white/10 transition cursor-pointer"
+          className="justify-self-end text-white/40 hover:text-white/90 p-2 rounded-full hover:bg-white/10 transition cursor-pointer"
         >
-          <X className="w-5 h-5" />
+          <X className="w-6 h-6" />
         </button>
       </header>
 
@@ -106,7 +125,7 @@ export function GazyVoiceOverlay({ isOpen, language, onClose }: GazyVoiceOverlay
         </div>
 
         {/* Title: Gazzy */}
-        <h1 className="font-serif text-[24px] sm:text-[27px] font-normal text-white tracking-normal text-center drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] mt-0.5">
+        <h1 className="font-serif text-[21px] sm:text-[24px] font-normal text-white tracking-normal text-center drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)] -mt-5 sm:-mt-7">
           Gazzy
         </h1>
 
@@ -116,26 +135,30 @@ export function GazyVoiceOverlay({ isOpen, language, onClose }: GazyVoiceOverlay
         </div>
 
         {error && (
-          <p role="alert" className="mt-2 max-w-[320px] text-center text-[12px] font-dm-sans text-[#F2A7A0]">
+          <p role="alert" className="mt-2 max-w-[340px] text-center text-[13px] font-dm-sans text-[#F2A7A0]">
             {error}
           </p>
         )}
 
         {/* Reduced Horizontal Transcript Pill */}
-        <div className="mt-4 sm:mt-5 w-full flex justify-center">
+        <div className="mt-3 sm:mt-4 w-full flex justify-center">
           <TranscriptPill userText={userText} agentText={agentText} listening={state === "listening"} />
         </div>
       </main>
 
-      {/* 4. Bottom Control Area: Reduced 3 Call Buttons (Mute, Hold, End) */}
-      <footer className="relative z-10 w-full pb-7 sm:pb-9 flex flex-col items-center justify-center">
-        <VoiceCallControls
-          isMuted={isMuted}
-          onToggleMute={toggleMute}
-          isHeld={isHeld}
-          onToggleHold={toggleHold}
-          onEnd={requestEndCall}
-        />
+      {/* 4. Bottom area: Mute, Hold and End during the call; a single Close button once it has ended */}
+      <footer className="relative z-10 w-full shrink-0 pt-5 sm:pt-6 pb-6 sm:pb-8 flex flex-col items-center justify-center">
+        {callEnded ? (
+          <VoiceCallClose onClose={onClose} />
+        ) : (
+          <VoiceCallControls
+            isMuted={isMuted}
+            onToggleMute={toggleMute}
+            isHeld={isHeld}
+            onToggleHold={toggleHold}
+            onEnd={requestEndCall}
+          />
+        )}
       </footer>
 
       {/* 5. End Call Confirmation Modal */}

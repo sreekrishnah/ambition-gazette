@@ -59,11 +59,25 @@ async function loadListener(userId: string): Promise<{ listener: ScriptListener;
   };
 }
 
+const normalized = (text: string): string => text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+// Three-word windows of each ambition title; a story that repeats any of them is restating the ambition.
+const shingles = (text: string): string[] => {
+  const words = normalized(text).split(' ').filter((w) => w.length > 2);
+  return words.slice(0, Math.max(0, words.length - 2)).map((_, i) => words.slice(i, i + 3).join(' '));
+};
+
+export function repeatsAmbition(text: string, ambitionTitles: string[]): boolean {
+  const haystack = normalized(text);
+  return ambitionTitles.some((title) => shingles(title).some((s) => haystack.includes(s)));
+}
+
 /**
  * Writes the full spoken script for the user's current briefing: for every story its facts and background,
  * both sides, and what it means for them, plus a closing synthesis. Stories whose script fails to generate are
  * left out and the voice agent improvises those from the stored briefing instead.
  */
+
 export async function generateBriefingScript(userId: string): Promise<BriefingScript | null> {
   const { report, items } = await getBriefingItems(userId, DOSSIER_ITEMS);
   if (!report || items.length === 0) return null;
@@ -74,11 +88,13 @@ export async function generateBriefingScript(userId: string): Promise<BriefingSc
   const chapters: ChapterScript[] = [];
   for (const [index, item] of items.entries()) {
     try {
-      const parts: ChapterScriptParts = await writeChapterScript({
+      const kind = item.relevanceBasis === 'general' ? ('world' as const) : ('ambition' as const);
+      const request = (ambition: 'may_name' | 'avoid' | 'hidden') => ({
+        ambition,
         listener,
         language,
         wordsPerPart,
-        kind: item.relevanceBasis === 'general' ? 'world' : 'ambition',
+        kind,
         headline: item.headline,
         summary: item.summary,
         whatChanged: item.whatChanged,
@@ -88,9 +104,13 @@ export async function generateBriefingScript(userId: string): Promise<BriefingSc
         history: (history[item.storyId] ?? []).map((h) => ({ date: h.occurredAt.slice(0, 10), headline: h.headline, whatChanged: h.whatChanged })),
         why: item.whyItMatters,
         couldChange: item.couldChange,
-        assumption: item.assumption ? { statement: item.assumption.statement, note: item.assumption.note } : null,
+        assumption: item.assumption?.effect === 'challenges' ? { statement: item.assumption.statement, note: item.assumption.note } : null,
         nextTitle: items[index + 1]?.storyTitle ?? null,
       });
+      const titles = listener.ambitions.map((a) => a.title);
+      let parts: ChapterScriptParts = await writeChapterScript(request(index === 0 ? 'may_name' : 'avoid'));
+      // The model sometimes restates the ambition anyway; a retry without it in view is the reliable fix.
+      if (index > 0 && repeatsAmbition(parts.for_you, titles)) parts = await writeChapterScript(request('hidden'));
       const facts = cleanModelText(parts.facts, MAX_PART_CHARS);
       const sides = cleanModelText(parts.sides, MAX_PART_CHARS);
       const forYou = cleanModelText(parts.for_you, MAX_PART_CHARS);

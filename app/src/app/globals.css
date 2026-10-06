@@ -219,3 +219,11 @@ button:not(:disabled):active,
     scroll-behavior: auto !important;
   }
 }
+
+/* Hides the scrollbar of horizontally scrolling chip rows while keeping them scrollable. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

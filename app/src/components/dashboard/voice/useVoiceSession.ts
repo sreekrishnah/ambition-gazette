@@ -13,6 +13,8 @@ interface UseVoiceSessionReturn {
   agentText: string;
   error: string | null;
   stopSession: () => void;
+  // Whole seconds since the call connected; frozen when it ends.
+  elapsedSec: number;
   isMuted: boolean;
   toggleMute: () => void;
   isHeld: boolean;
@@ -20,6 +22,8 @@ interface UseVoiceSessionReturn {
 }
 
 const MIN_LEVEL = 0.1;
+
+const ACTIVE_STATES: VoiceState[] = ["listening", "processing", "speaking", "idle"];
 
 export function useVoiceSession(isOpen: boolean, language: string): UseVoiceSessionReturn {
   // null until the session reports a state; the visible state is derived from isOpen meanwhile.
@@ -31,6 +35,10 @@ export function useVoiceSession(isOpen: boolean, language: string): UseVoiceSess
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isHeld, setIsHeld] = useState<boolean>(false);
+  // The timer runs from the first live state to the end of the call. Hold keeps it running.
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [endedAt, setEndedAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(0);
 
   const sessionRef = useRef<LiveSession | null>(null);
   const mutedRef = useRef(false);
@@ -50,7 +58,11 @@ export function useVoiceSession(isOpen: boolean, language: string): UseVoiceSess
       .then(({ token }) => {
         if (cancelled) return;
         const session = createLiveSession(token, language, {
-          onState: setState,
+          onState: (next) => {
+            setState(next);
+            if (next === "stopped" || next === "error") setEndedAt((prev) => prev ?? Date.now());
+            else if (next !== "connecting" && ACTIVE_STATES.includes(next)) setStartedAt((prev) => prev ?? Date.now());
+          },
           onLevel: (level) => setAudioLevel(Math.max(MIN_LEVEL, level)),
           onTranscript: (role, turn, text) => {
             transcriptRef.current.set(`${role}-${turn}`, text);
@@ -89,8 +101,18 @@ export function useVoiceSession(isOpen: boolean, language: string): UseVoiceSess
       setAgentText("");
       setAudioLevel(MIN_LEVEL);
       setState(null);
+      setStartedAt(null);
+      setEndedAt(null);
+      setNow(0);
     };
   }, [isOpen, language]);
+
+  // Ticks once a second while the call is running; a finished call keeps its last value.
+  useEffect(() => {
+    if (startedAt === null || endedAt !== null) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [startedAt, endedAt]);
 
   const toggleMute = useCallback(() => {
     const next = !mutedRef.current;
@@ -110,9 +132,12 @@ export function useVoiceSession(isOpen: boolean, language: string): UseVoiceSess
     sessionRef.current?.end();
     sessionRef.current = null;
     setState("stopped");
+    setEndedAt((prev) => prev ?? Date.now());
   }, []);
 
   const state: VoiceState = liveState ?? (isOpen ? "connecting" : "idle");
+  const clock = endedAt ?? Math.max(now, startedAt ?? 0);
+  const elapsedSec = startedAt === null ? 0 : Math.max(0, Math.floor((clock - startedAt) / 1000));
 
   return {
     state,
@@ -121,6 +146,7 @@ export function useVoiceSession(isOpen: boolean, language: string): UseVoiceSess
     agentText,
     error,
     stopSession,
+    elapsedSec,
     isMuted,
     toggleMute,
     isHeld,

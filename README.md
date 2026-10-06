@@ -1,13 +1,20 @@
 # Ambition Gazette
 
-**Trace events across time. Connect them to your ambitions.**
+**Ambition Gazette watches reality for changes that could make your plan wrong.**
 
-A personal briefing that tracks real-world events and shows how each one reaches your ambitions. 
-Events are the input; the product is persistent memory of you and of each story.
+Plans rest on assumptions. You state what must stay true for an ambition to work, and Ambition Gazette keeps each assumption as a belief it can test against real-world developments. It tells you when evidence builds against one, shows the sources and the chain from evidence to assumption to ambition, asks what you may want to reconsider, and records your decision.
+
+It is not a news feed or a summarizer: a development is shown only when it tests something your plan depends on.
 
 ```text
-Ambition -> articles (GNews/GDELT) -> story match -> development -> relevance -> briefing -> feedback -> memory
+Plan -> Assumptions -> Evidence (articles, stories, developments) -> Assumption test -> Plan status -> Your decision
 ```
+
+### Plan status
+
+Every assumption is **stable** (nothing against it), **on watch** (one report against it) or **reconsider** (two threatening developments, or one reported by two or more publishers). Developments can also confirm an assumption or reveal an opportunity it did not cover. Evidence is stored per assumption, so the state is derived and its history can be shown. Your decision (keep, modify, change the plan, dismiss) is recorded and resets which evidence still counts; later evidence can raise it again.
+
+Rules that keep it honest: only assumptions you write (or accept from our suggestions) are tested; a development can only test an assumption recorded before it happened; a challenge needs a direct link to the ambition and model confidence of at least 0.6; the "why it may no longer hold" and "what to reconsider" lines are labelled as our assessment, separate from what was reported.
 
 ## How it works
 
@@ -40,7 +47,7 @@ docs/   API contract (docs/API.md)
    - **API:** Gemini key, Supabase URL and service role key, `AUTH_SECRET`, `CRON_SECRET`, `DATABASE_URL`, and optionally `GNEWS_API_KEY` (without it, the pipeline falls back to GDELT).
    - **App:** Check `app/.env.example` for the required frontend variables.
 3. Apply the database schema:
-   - From `api/`: `npm install` then `npm run migrate`. This applies all migrations up to `009` and records them in `schema_migrations`.
+   - From `api/`: `npm install` then `npm run migrate`. This applies all migrations up to `010` and records them in `schema_migrations`.
 4. Run the development servers:
    - `npm run dev` in `api/` (starts Express server on port 5000)
    - `npm run dev` in `app/` (starts Next.js frontend on port 3000)
@@ -58,7 +65,8 @@ Checks: `npm run typecheck` and `npm test` in `api/`; `npm run e2e` in `api/` ru
 
 - `npm run seed:demo` in `api/` (API running) creates a local demo account from real Events so the dashboard, Lens and learning strip have data. The Events source and the Gemini free tier are rate limited, so run it once and wait a minute before repeating it.
 - `npm test` in `api/` runs the unit tests: relevance order, the Lens, tokens, voice limits, guardrails, etc.
-- Migration `006_drop_unused_tables.sql` removes tables from a cut design. It is not applied by default in an existing database; review it, then run `npm run migrate`.
+- The seeded assumptions are recorded before the saved news was published (a development can only test an assumption that already existed), so a fresh seed can show real challenges.
+- **Live demo trigger.** `npm run seed:demo -- --hold-back` (or `npm run demo:flip -- ananya --withdraw` on an existing database) leaves the dashboard quiet. `npm run demo:flip -- ananya` then ingests the pinned real articles, re-checks the plan and prints which assumptions moved, or says plainly that nothing changed. Nothing is invented. See [docs/DEMO.md](docs/DEMO.md) for the 90-second script.
 
 ## Deployment
 
