@@ -1,5 +1,5 @@
 import { assessRelevance } from '../ai/tasks';
-import { AssumptionImpact } from '../domain/attention';
+import { ATTENTION_THRESHOLDS, AssumptionImpact } from '../domain/attention';
 import { AmbitionAssessment, AmbitionCandidate, DevelopmentFacts, RelevanceDecision, decideRelevance } from '../domain/relevance';
 import { MemoryRow } from '../domain/types';
 import { createLogger } from '../lib/logger';
@@ -35,9 +35,9 @@ interface DevelopmentRecord {
 }
 
 // Raised whenever the assessment prompt or schema changes, so older cached judgements are redone.
-const ASSESSMENT_VERSION = 4;
+const ASSESSMENT_VERSION = 5;
 // Earlier versions judged assumptions with a looser rule; a stricter rule cannot turn "no impact" into an impact, so those stay valid.
-const PREVIOUS_VERSIONS = [2, 3];
+const PREVIOUS_VERSIONS = [2, 3, 4];
 
 interface CachedAssessment extends AmbitionAssessment {
   version?: number;
@@ -173,7 +173,7 @@ async function runAssessment(
   const impact = result.assumption_impact;
   const known = assumptions.some((a) => a.id === impact.assumption_id);
   const assumptionImpact: AssumptionImpact | null =
-    impact.effect !== 'none' && impact.assumption_id && known && impact.reason.trim()
+    impact.effect !== 'none' && impact.assumption_id && known && impact.reason.trim() && (impact.effect !== 'challenges' || result.confidence >= ATTENTION_THRESHOLDS.challengeConfidence)
       ? { assumptionId: impact.assumption_id, effect: impact.effect, reason: impact.reason.trim(), reconsider: impact.effect === 'challenges' ? impact.reconsider.trim() : '' }
       : null;
   return {
@@ -288,9 +288,10 @@ export async function evaluateDevelopment(ctx: UserRelevanceContext, dev: Develo
   };
 }
 
-export async function loadDevelopments(filter: { since?: Date; ids?: string[]; storyId?: string; limit?: number }): Promise<DevelopmentRecord[]> {
+export async function loadDevelopments(filter: { since?: Date; until?: Date | null; ids?: string[]; storyId?: string; limit?: number }): Promise<DevelopmentRecord[]> {
   let query = supabase.from('developments').select(DEVELOPMENT_SELECT).order('occurred_at', { ascending: false }).limit(filter.limit ?? 100);
   if (filter.since) query = query.gte('occurred_at', filter.since.toISOString());
+  if (filter.until) query = query.lte('occurred_at', filter.until.toISOString());
   if (filter.ids) query = query.in('id', filter.ids);
   if (filter.storyId) query = query.eq('story_id', filter.storyId);
   return unwrap('developments.load', await query.returns<DevelopmentRecord[]>());

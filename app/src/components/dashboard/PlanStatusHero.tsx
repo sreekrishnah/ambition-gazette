@@ -163,7 +163,10 @@ export function PlanStatusHero({ plan, deciding, onDecide }: PlanStatusHeroProps
             </div>
           ))}
           <p className="text-[11px] text-[#7A756D] font-dm-sans">
-            We read {plan.checked} news items and ignored {plan.setAside} that do not affect you.
+            {plan.setAside === 0
+              ? `We checked ${plan.checked} developments and every one of them bears on your plan.`
+              : `We checked ${plan.checked} developments and set aside ${plan.setAside} that do not affect your plan.`}
+            {plan.replayUntil && ` Replaying real events up to ${new Date(plan.replayUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}.`}
           </p>
         </div>
       )}

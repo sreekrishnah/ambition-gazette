@@ -142,7 +142,7 @@ export function GazyVoiceOverlay({ isOpen, language, onClose }: GazyVoiceOverlay
 
         {/* Reduced Horizontal Transcript Pill */}
         <div className="mt-3 sm:mt-4 w-full flex justify-center">
-          <TranscriptPill userText={userText} agentText={agentText} listening={state === "listening"} />
+          <TranscriptPill userText={userText} agentText={agentText} listening={state === "listening"} held={isHeld} />
         </div>
       </main>
 

@@ -31,6 +31,9 @@ const io = new Server(httpServer, {
   cors: { origin: allowedOrigins, credentials: true },
   // One audio frame is a few KB; this caps abusive payloads.
   maxHttpBufferSize: 256 * 1024,
+  // A busy or throttled browser tab can be slow to answer a ping; the 20 s default ended calls mid-briefing ("ping timeout").
+  pingInterval: 25_000,
+  pingTimeout: 60_000,
 });
 registerLiveSocket(io);
 

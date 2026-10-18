@@ -372,6 +372,7 @@ export interface PlanStatus {
   totals: { assumptions: number; stable: number; watch: number; reconsider: number; confirmations: number; opportunities: number };
   checked: number;
   setAside: number;
+  replayUntil: string | null;
 }
 
 export interface AssumptionSuggestion {

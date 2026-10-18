@@ -52,11 +52,11 @@ describe('buildLiveInstruction', () => {
     expect(text).not.toContain('deep-dive podcast');
   });
 
-  it('hosts a long, directed briefing instead of short answers', () => {
+  it('hosts a directed briefing that does not over-explain', () => {
     expect(text).toContain('[Director:');
     expect(text).toContain('both sides');
-    expect(text).toContain('Never wrap up early');
-    expect(text).not.toContain('two or three sentences');
+    expect(text).toContain('Do not over-explain');
+    expect(text).toContain('skip_story straight away');
   });
 
   it('carries the full dossier: ambition details, history, outlets, stored link and effect', () => {

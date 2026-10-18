@@ -22,8 +22,12 @@ const EnvSchema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   // Hard limits on the live voice agent, counted per user per IST day.
   VOICE_SESSIONS_PER_DAY: z.coerce.number().int().min(1).default(2),
-  VOICE_TOKENS_PER_SESSION: z.coerce.number().int().min(10_000).default(600_000),
-  VOICE_TOKENS_PER_DAY: z.coerce.number().int().min(10_000).default(1_200_000),
+  VOICE_TOKENS_PER_SESSION: z.coerce.number().int().min(10_000).default(2_000_000),
+  VOICE_TOKENS_PER_DAY: z.coerce.number().int().min(10_000).default(4_000_000),
+  // How far back the briefing and the Lens look for developments, and optionally the date the window ends at.
+  // Both are changed only to replay the dated NVIDIA demo; normally the window is the last 14 days up to now.
+  BRIEFING_WINDOW_DAYS: z.coerce.number().int().min(1).default(14),
+  BRIEFING_WINDOW_END: z.string().datetime({ offset: true }).optional(),
   VOICE_MAX_TOOL_CALLS: z.coerce.number().int().min(1).default(60),
 });
 
@@ -40,6 +44,12 @@ function loadEnv(): Env {
 }
 
 export const env: Env = loadEnv();
+
+/** The span of developments the briefing and the Lens weigh; `until` is null for the live window that ends now. */
+export function briefingWindow(): { since: Date; until: Date | null } {
+  const until = env.BRIEFING_WINDOW_END ? new Date(env.BRIEFING_WINDOW_END) : null;
+  return { since: new Date((until ?? new Date()).getTime() - env.BRIEFING_WINDOW_DAYS * 86_400_000), until };
+}
 
 // The vector columns are vector(768); the embedding model is asked for exactly this size.
 export const EMBEDDING_DIMENSIONS = 768;

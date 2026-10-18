@@ -22,13 +22,13 @@ export interface DriverChapter {
 const plain = (text: string): string => text.replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim();
 
 const FROM_SCRIPT =
-  'Cover every point of the script below, in order, in your own natural spoken words in the language you were told to use (translate it if it is written in another language). Do not read it word for word and do not add facts that are not in it; general background is allowed only when you mark it as such.';
+  'Cover only the key points of the script below, in order, in your own natural spoken words in the language you were told to use (translate it if it is written in another language). Do not read it word for word and do not add facts that are not in it; general background is allowed only when you mark it as such.';
 
 // Three parts and one check-in question per story.
 const NOTES_PER_STORY = 4;
 
 // Seconds per part, from the depth chosen at onboarding. A story is three parts.
-const PART_SECONDS: Record<string, number> = { essential: 25, balanced: 40, deep: 55 };
+const PART_SECONDS: Record<string, number> = { essential: 15, balanced: 22, deep: 30 };
 
 export function partSeconds(depth: string | null | undefined): number {
   return PART_SECONDS[(depth ?? '').trim().toLowerCase()] ?? PART_SECONDS.deep;
@@ -57,9 +57,14 @@ export class BriefingDriver {
   private pending: number | null = null;
   private interrupted = false;
   private resume = false;
+  // The note already repeated once after an interruption; a second interruption moves on instead of looping.
+  private resumedIndex: number | null = null;
+  private skippedAt = 0;
   private stopped = false;
   private waiting: Wait | null = null;
   private replied = false;
+  // The listener spoke outside a question: the host's answer must be followed by a pause, not by more narration.
+  private answering = false;
   private readonly notes: Note[];
   private readonly closingIndex: number;
 
@@ -85,6 +90,16 @@ export class BriefingDriver {
     return this.pending !== null;
   }
 
+  /** True once every story is done and only the closing steps are left. */
+  get inClosing(): boolean {
+    return !this.stopped && this.cursor >= this.closingIndex;
+  }
+
+  /** True from the moment the listener speaks until the host's answer is finished and the pause after it is over. */
+  get answerPending(): boolean {
+    return this.answering;
+  }
+
   /** What the driver is waiting on the listener for, or null. */
   get waitingFor(): Wait | null {
     return this.waiting;
@@ -108,9 +123,22 @@ export class BriefingDriver {
     this.pending = null;
     if (this.interrupted) {
       this.interrupted = false;
+      this.answering = false;
+      // Whatever the listener says over the farewell, the call is over.
+      if (note.kind === 'goodbye') {
+        this.cursor = index + 1;
+        return 'end';
+      }
       if (note.kind !== 'ask') {
-        this.resume = true;
-        return 'next';
+        if (this.resumedIndex === index) {
+          this.cursor = index + 1;
+          this.resumedIndex = null;
+        } else {
+          this.resume = true;
+          this.resumedIndex = index;
+        }
+        // The host has just answered the listener: leave room to react before the briefing carries on.
+        return 'wait';
       }
       // The listener answered the question over the host, so the question counts as asked and answered.
       this.cursor = index + 1;
@@ -119,6 +147,7 @@ export class BriefingDriver {
       return this.answerCompleted();
     }
     this.cursor = index + 1;
+    this.resumedIndex = null;
     if (note.kind === 'goodbye') return 'end';
     if (note.kind === 'ask') {
       this.waiting = note.wait ?? 'story';
@@ -130,6 +159,10 @@ export class BriefingDriver {
 
   // A turn that no note started: the host answered the listener, or a tool call finished.
   private answerCompleted(): TurnOutcome {
+    if (this.waiting === null && this.answering) {
+      this.answering = false;
+      return 'wait';
+    }
     if (this.waiting === null || !this.replied) return this.waiting === null ? 'next' : 'wait';
     this.replied = false;
     // Feedback may come in several sentences, so the listener is waited for again before the farewell.
@@ -142,24 +175,34 @@ export class BriefingDriver {
   listenerSpoke(): void {
     if (this.pending !== null) this.interrupted = true;
     if (this.waiting !== null) this.replied = true;
+    else this.answering = true;
   }
 
   /** The listener stayed silent for the whole waiting window, so the briefing moves on. */
   waitElapsed(): void {
     this.waiting = null;
     this.replied = false;
+    this.answering = false;
+    // An interruption that never got an answer (noise) must not block the part from being cued again.
+    if (this.pending !== null && this.interrupted) {
+      this.pending = null;
+      this.interrupted = false;
+      this.resume = true;
+    }
   }
 
   stop(): void {
     this.stopped = true;
     this.pending = null;
     this.waiting = null;
+    this.answering = false;
   }
 
   resumeBriefing(): void {
     this.stopped = false;
     this.pending = null;
     this.interrupted = false;
+    this.answering = false;
   }
 
   /** Jumps to the first part of the next story, to the closing from the last story, or on to the next closing step. */
@@ -171,9 +214,17 @@ export class BriefingDriver {
     this.pending = null;
     this.interrupted = false;
     this.resume = false;
+    this.resumedIndex = null;
     this.stopped = false;
     this.waiting = null;
     this.replied = false;
+    this.answering = false;
+    this.skippedAt = Date.now();
+  }
+
+  /** True just after a skip, so the model's own skip_story call for the same request does not skip a second story. */
+  justSkipped(): boolean {
+    return Date.now() - this.skippedAt < 20_000;
   }
 }
 
@@ -194,7 +245,7 @@ function storyNotes(chapter: DriverChapter, index: number, chapters: DriverChapt
     : 'This is the last story, so close it without a bridge.';
   // Models speak about half the length they are asked for in seconds, so the length is also given in words.
   const words = Math.round(seconds * 4);
-  const tail = `Take your time and do not cut it short: speak for about ${words} words, roughly ${seconds} seconds. Do not ask the listener anything. Never mention or read out this note.]`;
+  const tail = `Use at most ${words} words (about ${seconds} seconds), fewer is fine: only what the listener needs, no side detail, nothing repeated from earlier parts. Do not ask the listener anything. Never mention or read out this note.]`;
   const ask: Note = {
     chapter: index,
     kind: 'ask',

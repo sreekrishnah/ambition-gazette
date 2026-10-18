@@ -1,4 +1,5 @@
 import { AssumptionState, SignalEffect, deriveBelief } from '../domain/beliefs';
+import { env } from '../config/env';
 import { supabase, unwrap } from '../lib/supabase';
 import { Decision, toSignal } from './assumptions';
 import { loadSources } from './briefing';
@@ -53,6 +54,8 @@ export interface PlanStatus {
   // How many developments were weighed against the person's plan, and how many of those were set aside.
   checked: number;
   setAside: number;
+  // Set only while the dated demo replays past events: the date the evidence window ends at.
+  replayUntil: string | null;
 }
 
 interface AmbitionRow {
@@ -180,6 +183,7 @@ export async function getPlanStatus(userId: string): Promise<PlanStatus> {
     },
     checked: lens.funnel.checked,
     setAside: lens.funnel.checked - lens.funnel.shown,
+    replayUntil: env.BRIEFING_WINDOW_END ?? null,
   };
 }
 

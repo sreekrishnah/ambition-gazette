@@ -1,6 +1,7 @@
 import { SignalEffect } from '../domain/beliefs';
 import { ATTENTION_RANK } from '../domain/attention';
 import { Attention, Continuity, RelevanceBasis, isAttention, isContinuity } from '../domain/types';
+import { briefingWindow } from '../config/env';
 import { createLogger } from '../lib/logger';
 import { supabase, unwrap, unwrapMaybe, unwrapVoid } from '../lib/supabase';
 import { recomputeUserAssumptions } from './assumptions';
@@ -9,7 +10,6 @@ import { pickMustKnowEvents } from './worldEvents';
 
 const log = createLogger('briefing');
 
-const WINDOW_DAYS = 14;
 // Every development in the window is weighed against the plan; a lower cap silently dropped older ones that still mattered.
 const WINDOW_MAX_DEVELOPMENTS = 500;
 
@@ -159,8 +159,8 @@ export async function buildBriefing(
   options: { storyId?: string; onProgress?: (message: string) => void } = {},
 ): Promise<BriefingBuildResult> {
   const ctx = await loadUserContext(userId);
-  const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000);
-  const devs = await loadDevelopments(options.storyId ? { storyId: options.storyId, limit: 50 } : { since, limit: WINDOW_MAX_DEVELOPMENTS });
+  const { since, until } = briefingWindow();
+  const devs = await loadDevelopments(options.storyId ? { storyId: options.storyId, limit: 50 } : { since, until, limit: WINDOW_MAX_DEVELOPMENTS });
   const devById = new Map(devs.map((d) => [d.id, d]));
   const { evaluated, failed } = await evaluateMany(ctx, devs, (done, total) =>
     options.onProgress?.(`Matching events to your ambitions (${done} of ${total})`),

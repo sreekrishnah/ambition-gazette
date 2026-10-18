@@ -43,13 +43,57 @@ describe('BriefingDriver', () => {
     const d = make();
     const first = d.nextNote() as string;
     d.listenerSpoke();
-    expect(d.turnCompleted()).toBe('next'); // the answer to the listener finished
+    expect(d.turnCompleted()).toBe('wait'); // the answer to the listener finished: pause before resuming
     const again = d.nextNote() as string;
     expect(again).toContain(RESUME_PREFIX);
     expect(again).toContain('part 1 of 3');
     expect(first).not.toContain(RESUME_PREFIX);
     d.turnCompleted();
     expect(d.nextNote()).toContain('part 2 of 3');
+  });
+
+  it('moves on when the same part is interrupted a second time instead of looping', () => {
+    const d = make();
+    d.nextNote();
+    d.listenerSpoke();
+    d.turnCompleted();
+    d.nextNote(); // repeated once
+    d.listenerSpoke();
+    d.turnCompleted();
+    expect(d.nextNote()).toContain('part 2 of 3');
+  });
+
+  it('skips straight to the next story after an interruption, without repeating the part', () => {
+    const d = make();
+    d.nextNote();
+    d.listenerSpoke();
+    d.skipStory();
+    expect(d.justSkipped()).toBe(true);
+    expect(d.turnCompleted()).toBe('next');
+    const next = d.nextNote() as string;
+    expect(next).not.toContain(RESUME_PREFIX);
+    expect(next).toContain('story 2');
+  });
+
+  it('pauses after answering a question asked between parts, then carries on', () => {
+    const d = make();
+    d.listenerSpoke();
+    expect(d.answerPending).toBe(true);
+    expect(d.turnCompleted()).toBe('wait');
+    expect(d.answerPending).toBe(false);
+    expect(d.turnCompleted()).toBe('next');
+  });
+
+  it('ends the call when the listener speaks over the farewell', () => {
+    const d = new BriefingDriver([{ title: 'Only story' }], 'Sam', 50);
+    for (let i = 0; i < 6; i += 1) {
+      d.nextNote();
+      d.turnCompleted();
+      if (d.waitingFor) d.waitElapsed();
+    }
+    expect(d.nextNote()).toContain('goodbye');
+    d.listenerSpoke();
+    expect(d.turnCompleted()).toBe('end');
   });
 
   it('ignores the listener speaking when no part is running', () => {

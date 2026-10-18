@@ -22,15 +22,22 @@ const MAX_SESSION_MS = 40 * 60 * 1000;
 const PROCESSING_DELAY_MS = 700;
 const LEVEL_LOG_INTERVAL_MS = 5000;
 // Pause after an agent turn before the next part is cued, long enough for the listener to start speaking.
-const NEXT_PART_DELAY_MS = 900;
+const NEXT_PART_DELAY_MS = 150;
 // How long the host waits for the listener after a question: long enough to think, short enough not to feel dead.
-const ASK_WAIT_MS = 9000;
+const ASK_WAIT_MS = 7000;
 // After the listener has answered, a short wait for anything more before moving on.
-const FOLLOW_UP_WAIT_MS = 4500;
+const FOLLOW_UP_WAIT_MS = 6000;
 // The farewell audio is already on its way to the client; a moment lets it finish before the call is closed.
 const FAREWELL_GRACE_MS = 2500;
 // Longest the briefing waits for the host to answer a listener who spoke after a question.
 const UNANSWERED_WAIT_MS = 25_000;
+// A listener asking to move on is obeyed at once, without waiting for the model to call a tool.
+// A listener saying goodbye, or thanking the host once the stories are done, ends the call a moment after the reply.
+const GOODBYE = /(bye|goodbye|good bye|end (the )?(call|session)|hang up|that'?s all|that is all)/i;
+const THANKS = /(thank you|thanks|thankyou)/i;
+const END_AFTER_REPLY_MS = 3000;
+const END_FALLBACK_MS = 10_000;
+const MOVE_ON = /(skip|move on|next (story|event|topic|briefing|news|one)|(move|go|jump) (on )?to (the )?next)/i;
 
 export type LiveState = 'connecting' | 'listening' | 'user_speaking' | 'processing' | 'agent_speaking' | 'held' | 'ended' | 'error';
 export type Role = 'user' | 'agent';
@@ -83,6 +90,8 @@ export class LiveSession {
   // Separate from continueTimer so the listener speaking cannot cancel the end of a finished call.
   private endTimer: NodeJS.Timeout | null = null;
   private toolsInFlight = 0;
+  private moveOnHandled = false;
+  private endRequested = false;
   private tokensUsed = 0;
   private inputFrames = 0;
   private inputSumSquares = 0;
@@ -265,6 +274,8 @@ export class LiveSession {
       this.lastActivity = Date.now();
       this.listenerSpoke();
       this.appendTranscript('user', content.inputTranscription.text);
+      this.moveOnIfAsked();
+      this.endIfAsked();
       if (this.state === 'listening' || this.state === 'processing') this.setState('user_speaking');
       this.scheduleProcessing();
     }
@@ -283,6 +294,8 @@ export class LiveSession {
     }
 
     if (content.turnComplete) {
+      this.moveOnHandled = false;
+      if (this.endRequested) this.endSoon(END_AFTER_REPLY_MS);
       this.finalizeOpen();
       this.turn += 1;
       if (!this.held) this.setState('listening');
@@ -354,7 +367,9 @@ export class LiveSession {
     );
     this.refs.briefing = {
       stop: () => this.driver?.stop(),
-      skipStory: () => this.driver?.skipStory(),
+      skipStory: () => {
+        if (!this.driver?.justSkipped()) this.driver?.skipStory();
+      },
       resume: () => {
         this.driver?.resumeBriefing();
         this.scheduleNextPart();
@@ -366,7 +381,32 @@ export class LiveSession {
     this.driver?.listenerSpoke();
     this.clearContinueTimer();
     // If the host never answers (for example the sound was only noise), the briefing must still move on.
-    if (this.driver?.waitingFor) this.waitForListener(UNANSWERED_WAIT_MS);
+    if (this.driver?.waitingFor || this.driver?.answerPending) this.waitForListener(UNANSWERED_WAIT_MS);
+  }
+
+  private moveOnIfAsked(): void {
+    if (this.moveOnHandled || !this.driver) return;
+    const last = this.transcript[this.transcript.length - 1];
+    if (last?.role !== 'user' || !MOVE_ON.test(last.text)) return;
+    this.moveOnHandled = true;
+    this.driver.skipStory();
+    log.info('listener asked to move on', { sessionId: this.dbSessionId });
+  }
+
+  private endIfAsked(): void {
+    if (this.endRequested || !this.driver) return;
+    const last = this.transcript[this.transcript.length - 1];
+    if (last?.role !== 'user') return;
+    if (!GOODBYE.test(last.text) && !(THANKS.test(last.text) && this.driver.inClosing)) return;
+    this.endRequested = true;
+    this.clearContinueTimer();
+    // Normally the end follows the host's reply; this covers a reply that never comes.
+    this.endSoon(END_FALLBACK_MS);
+  }
+
+  private endSoon(ms: number): void {
+    if (this.endTimer) clearTimeout(this.endTimer);
+    this.endTimer = setTimeout(() => void this.end('completed'), ms);
   }
 
   private clearContinueTimer(): void {
@@ -407,7 +447,7 @@ export class LiveSession {
 
   private cueNextPart(): void {
     this.continueTimer = null;
-    if (!this.driver || this.closing || this.held || !this.session) return;
+    if (!this.driver || this.closing || this.held || !this.session || this.endRequested) return;
     // Only cue while the room is quiet: not while the listener is talking, a tool is running or audio is playing.
     if (this.toolsInFlight > 0 || (this.state !== 'listening' && this.state !== 'processing')) return;
     const note = this.driver.nextNote();

@@ -1,8 +1,8 @@
 import { CoverageEntry, FeedbackEntry, Lens, buildLens } from '../domain/lens';
 import { RelevanceBasis, isAttention } from '../domain/types';
+import { briefingWindow } from '../config/env';
 import { supabase, unwrap } from '../lib/supabase';
 
-const WINDOW_DAYS = 14;
 const FEEDBACK_LIMIT = 20;
 
 interface CoverageRow {
@@ -27,7 +27,9 @@ interface FeedbackRow {
 }
 
 export async function getLens(userId: string): Promise<Lens> {
-  const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString();
+  const window = briefingWindow();
+  const since = window.since.toISOString();
+  const until = (window.until ?? new Date("9999-12-31")).toISOString();
 
   const [coverageRows, feedbackRows] = await Promise.all([
     supabase
@@ -37,6 +39,7 @@ export async function getLens(userId: string): Promise<Lens> {
       )
       .eq('user_id', userId)
       .gte('developments.occurred_at', since)
+      .lte('developments.occurred_at', until)
       .returns<CoverageRow[]>(),
     supabase
       .from('feedback')

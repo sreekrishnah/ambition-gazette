@@ -14,4 +14,5 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
   { key: 'student', label: 'Student', email: 'ananya.krishnan@ambitiongazette.demo', password: DEMO_PASSWORD },
   { key: 'switch', label: 'Career Switch', email: 'joe.bradski@ambitiongazette.demo', password: DEMO_PASSWORD },
   { key: 'founder', label: 'Founder', email: 'mery.george@ambitiongazette.demo', password: DEMO_PASSWORD },
+  { key: 'ai', label: 'AI Startup', email: 'arjun.menon@ambitiongazette.demo', password: DEMO_PASSWORD },
 ];
