@@ -1,0 +1,48 @@
+{
+  "name": "ambition-gazette-api",
+  "version": "0.1.0",
+  "description": "Ambition Gazette Express + TypeScript API Server",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "migrate": "tsx scripts/migrate.ts",
+    "reembed": "tsx scripts/reembed.ts",
+    "e2e": "tsx scripts/e2e.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "seed:graph": "tsx scripts/seed-graph.ts",
+    "demo:flip": "tsx scripts/demo-flip.ts",
+    "eval:assumptions": "tsx scripts/eval-assumptions.ts",
+    "eval:collect": "tsx scripts/eval-collect.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.24.0",
+    "@relate/relate": "^1.2.0",
+    "@supabase/supabase-js": "^2.117.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^10.6.1",
+    "pg": "^8.23.1",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.19.1",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "socket.io-client": "^4.8.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^5.0.3"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.3.3"
+  }
+}
